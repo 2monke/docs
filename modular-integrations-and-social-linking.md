@@ -137,7 +137,7 @@ Rather than hosting a persistent WebSocket bot process, the platform handles Dis
 Discord User types /ask question: "..." in Discord server
   │
   ▼
-Discord sends POST https://ronya.art/api/discord/interactions
+Discord sends POST https://<platform-domain>/api/discord/interactions
   │
   ├─ 1. Ed25519 Signature Verification (X-Signature-Ed25519 + X-Signature-Timestamp)
   │     └─ Uses native Node.js crypto.verify with DISCORD_PUBLIC_KEY
@@ -155,7 +155,9 @@ Discord sends POST https://ronya.art/api/discord/interactions
            │  2. Channel context: checks if channel matches DISCORD_ARTIST_CHANNEL_ID
            │  3. Member role context: checks if member has DISCORD_ARTIST_ROLE_ID
            │  4. Fallback: defaults to 'buyer'
-           ├─ Invokes domain server action askHelp({ question, audience, source: 'discord' })
+           ├─ Forwards to the help service via askHelpService({ question, audience, source: 'discord' })
+           │  (src/lib/help/client.ts → POST {HELP_SERVICE_URL}/api/help/ask/service, HMAC-signed).
+           │  Answering lives in 2monke/help-service; this route is only a proxy.
            ├─ Formats Discord Embed with branded colors, answer text, relevant doc citations,
            │  and human support escalation links.
            └─ Patches original Discord interaction response via:
@@ -186,10 +188,9 @@ yarn discord:register --global
 | `src/lib/integrations/registry.ts` | Central adapter registry with automatic provider registration |
 | `src/lib/integrations/providers/discord.adapter.ts` | Discord OAuth and Guild Join / Role Sync adapter |
 | `src/lib/integrations/discord/interactions.ts` | Ed25519 signature validation, audience resolution, and embed formatting |
-| `src/lib/integrations/discord/commands.ts` | `/ask` slash command schema and Discord REST registration client |
 | `src/lib/integrations/index.ts` | Barrel export for integrations library |
-| `src/app/api/discord/interactions/route.ts` | HTTP Interactions endpoint verifying Ed25519 and handling `/ask` |
-| `scripts/discord-register-commands.ts` | CLI script for registering `/ask` command to guild or globally |
+| `src/app/api/discord/interactions/route.ts` | HTTP Interactions endpoint verifying Ed25519 and proxying `/ask` to the help service |
+| `2monke/discord-gateway` | Slash command registration and the forum websocket listener (separate repository) |
 | `src/features/integrations/actions/save-connected-account.action.ts` | Action for saving/updating connected accounts |
 | `src/features/integrations/actions/get-connected-accounts.action.ts` | Action for querying user/studio integrations |
 | `src/features/integrations/actions/disconnect-account.action.ts` | Action for disconnecting and revoking an integration |
@@ -197,7 +198,7 @@ yarn discord:register --global
 | `src/app/api/integrations/[provider]/connect/route.ts` | OAuth initiation route with server-side audience resolution |
 | `src/app/api/integrations/[provider]/callback/route.ts` | OAuth callback route handling token exchange & guild sync |
 | `tests/int/integrations-engine.int.spec.ts` | 7 automated integration tests verifying registry, state HMAC, and Discord guild join |
-| `tests/int/discord-interactions.int.spec.ts` | 14 automated tests for Ed25519 verification, PING/PONG, `/ask` deferred response, and embeds |
+| `tests/int/discord-interactions.int.spec.ts` | 12 automated tests for Ed25519 verification, PING/PONG, `/ask` deferred response, and embeds |
 
 ## Verification Reference
 
