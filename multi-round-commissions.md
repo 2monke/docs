@@ -138,7 +138,8 @@ round the customer chose — never to “whichever round is accepting now”.
   type within a live round**, not one card per round. Illustration + Acrylic in
   one round is two offers at two price lists, so it renders as two cards — each
   with its own artwork (a seat type shows the round's sheet, an open type shows
-  its first category image), the round name as context above the type name, its
+  its first category image or, when that gallery is empty, a tier example image
+  from its own categories), the round name as context above the type name, its
   own availability, and its own CTA (`?round=<id>&commissionType=<key>`) that
   opens the form already set to that round and type. The artwork opens a
   full-screen **Preview**. Motion is a marquee — see below.
@@ -169,11 +170,14 @@ round the customer chose — never to “whichever round is accepting now”.
   card is never a moving target for a click or a Tab. `prefers-reduced-motion`
   stops it outright, hides the duplicate copy, and lets the row scroll by hand.
 - **Card imagery** (`buildOpenRoundCards`, pure): a seat round shows its sheet;
-  an open round borrows the first artwork of the categories it sells; a bound
-  round with no imagery of its own falls back to a text-only treatment rather
-  than borrowing another campaign's art (a legacy unbound round may borrow
-  anything, since it sells everything). `toShowcaseRounds` joins live rounds with
-  their seat inventory, shared by the block and the page.
+  an open round takes the first artwork of the categories it sells (the
+  Appearance galleries); a type with no gallery image falls back to the first
+  example image on a tier item nested in one of its categories, including
+  categories that render no prices-page section. A type with no imagery in
+  either place keeps the text-only treatment rather than borrowing another
+  campaign's art (a legacy unbound round may borrow anything, since it sells
+  everything). `toShowcaseRounds` joins live rounds with their seat inventory,
+  shared by the block and the page.
 - **Form** (`CommissionForm`): a round switcher appears only when ≥2 rounds are
   live; switching rounds clears the type and every tier/seat selection. A
   seat-based type renders the seat map (image + note) and numbered seats; taken

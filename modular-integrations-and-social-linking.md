@@ -15,10 +15,16 @@ A universal provider-adapter architecture for third-party platform integrations 
 2. **Automated Server Onboarding & Role Sync**: When linking Discord, users are automatically added to the 2monke Discord guild via the Discord Bot API and granted their respective community role (**`@Artist`** or **`@Customer`**).
 3. **Extensibility**: Adding new providers (Twitter/X, Bluesky, Twitch) requires only implementing an adapter class without changing the database schema or OAuth route logic.
 
+## Placement
+
+Connected accounts live on **My Studio → Integrations** (`/admin/integrations`). Payouts (`/admin/payouts`) is deliberately money-only: Stripe Connect, payout status, and the Express dashboard. Customer and artist profile pages expose the same card from their own account settings. Keeping third-party account linking out of Payouts prevents “how I get paid” and “which community accounts are linked” from sharing one page.
+
+The page is account-scoped, not tenant-scoped: OAuth state is signed with the signed-in user, so a superadmin viewing another studio cannot connect that artist's Discord from their own session.
+
 ## Architecture
 
 ```
-User clicks "Connect Discord" in Studio Settings or Customer Dashboard
+User clicks "Connect Discord" on My Studio → Integrations (or the profile card)
   │
   ▼
 GET /api/integrations/[provider]/connect
@@ -111,9 +117,9 @@ The state parameter used during the OAuth handshake is protected against forgery
 ## Domain Server Actions
 
 Located in [`src/features/integrations/`](file:///Users/eugenepucko/Projects/artpack-parallel/src/features/integrations):
-- [`saveConnectedAccount`](file:///Users/eugenepucko/Projects/artpack-parallel/src/features/integrations/actions/save-connected-account.action.ts): Upserts an active integration, recording token metadata and sync outcomes.
-- [`getConnectedAccounts`](file:///Users/eugenepucko/Projects/artpack-parallel/src/features/integrations/actions/get-connected-accounts.action.ts): Queries linked integrations for a specific user or studio.
-- [`disconnectAccount`](file:///Users/eugenepucko/Projects/artpack-parallel/src/features/integrations/actions/disconnect-account.action.ts): Revokes an integration and executes adapter-specific cleanup hooks.
+- [`getConnectedAccounts`](file:///Users/eugenepucko/Projects/artpack-parallel/src/features/integrations/actions/get-connected-accounts.action.ts): Returns token-free `ConnectedAccountSummary` rows for the signed-in user (or an admin-targeted user). Raw OAuth tokens never cross the server/client boundary.
+- [`saveConnectedAccount`](file:///Users/eugenepucko/Projects/artpack-parallel/src/features/integrations/actions/save-connected-account.action.ts): Server-only OAuth callback writer. Rejects callers without a real Payload context so a browser cannot forge a connection.
+- [`disconnectAccount`](file:///Users/eugenepucko/Projects/artpack-parallel/src/features/integrations/actions/disconnect-account.action.ts): Revokes an integration and executes adapter-specific cleanup hooks. The browser sends only the provider; the server resolves the owner from the session.
 
 ## Environment Configuration
 
@@ -181,6 +187,12 @@ yarn discord:register --global
 | Path | Purpose |
 |---|---|
 | `src/collections/ConnectedAccounts.ts` | Collection config for external OAuth accounts |
+| `src/components/admin/IntegrationsViewServer.tsx` | Server wrapper for `/admin/integrations`; resolves accounts before first paint |
+| `src/features/integrations/components/IntegrationsView.tsx` | Admin Integrations page (admin-native, token-free UI) |
+| `src/features/integrations/components/ConnectedAccountsCard.tsx` | Customer/artist profile card, shared state hook |
+| `src/features/integrations/hooks/use-connected-accounts.ts` | Shared OAuth-return, connect, disconnect state machine |
+| `src/features/integrations/lib/connected-account-summary.ts` | Token-stripping projection for client components |
+| `src/features/integrations/lib/catalog.ts` | Client-safe integration names/descriptions |
 | `src/lib/utils/id.ts` | Added `connectedAccount: 'acc_'` ID prefix |
 | `src/payload.config.ts` | Registered `ConnectedAccounts` in `withAdminLeaveGuard` |
 | `src/lib/integrations/types.ts` | Core types, OAuth interfaces, and adapter contracts |
@@ -206,9 +218,30 @@ yarn discord:register --global
 # Run integration tests for Discord interactions and integrations engine
 yarn test:int tests/int/discord-interactions.int.spec.ts tests/int/integrations-engine.int.spec.ts
 
+# Connected-accounts surfaces: admin view rendering, OAuth return contract,
+# connect/callback route behaviour
+yarn test:int tests/int/integrations-view.int.spec.ts tests/int/integrations-return.int.spec.ts \
+  tests/int/integrations-connect.int.spec.ts tests/int/integrations-callback.int.spec.ts
+
+# Admin design contract (local literals, !important budget, mobile flattening)
+yarn test:int tests/int/admin-theme-contract.int.spec.ts tests/int/admin-mobile-borderless-views.int.spec.ts
+
 # Ensure customer help assistant and internal ask tests stay green
 yarn test:int tests/int/help-assistant.int.spec.ts tests/int/ask-pipeline.int.spec.ts
 
 # Validate TypeScript compilation
 yarn tsc --noEmit
 ```
+
+## Manual QA
+
+1. `/admin/integrations` — connect Discord in an environment with Discord credentials;
+   confirm the callback returns to this page, the row shows `@handle`, `Joined`, and the
+   role, and the URL no longer carries `integration`/`status` params.
+2. Disconnect — the confirmation appears inline (no browser `confirm()`), the row is removed,
+   and a success notice is shown.
+3. Without `DISCORD_CLIENT_ID`/`SECRET`, the Connect button returns to the page with a
+   “not configured yet” notice instead of hitting Discord.
+4. Payouts (`/admin/payouts`) shows Stripe only, with a “Manage integrations” pointer.
+5. Customer profile — the same card renders from server-resolved accounts and survives a
+   reload in the connected state.

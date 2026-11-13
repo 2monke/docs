@@ -70,7 +70,7 @@ three ways:
 - `ADMIN_GROUPS`: My Studio, My Work, Shop & Sales, Media Library, System & Security,
   Legal & Policies — plain text, no emoji zoo.
 - `ADMIN_LABELS`: artist-facing names — `Artist Profile`, `Notifications`, `Payouts`,
-  `Work Batch(es)`, `Download(s)`, `Original File(s)`.
+  `Integrations`, `Work Batch(es)`, `Download(s)`, `Original File(s)`.
 - Every collection/global `admin.group`, every hardcoded nav label, breadcrumb, and
   step-nav entry references these constants — renaming a label changes it everywhere.
 
@@ -78,7 +78,7 @@ three ways:
 
 | Group | Entities |
 |---|---|
-| My Studio | Studios, Artists, Themes, CommissionSettings, NotificationSettings, Pages (+ Payouts custom view) |
+| My Studio | Studios, Artists, Themes, CommissionSettings, NotificationSettings, Pages (+ Payouts and Integrations custom views) |
 | My Work | Commissions, Queue (admin-only), Sprints → **Work Batches** |
 | Shop & Sales | Products, Orders, Tips, DigitalAssets → **Downloads** |
 | Media Library | Media, RawMedia → **Original Files**, Announcements |
@@ -106,8 +106,10 @@ views such as Payouts, which wrap their own template).
   visibleEntities, config, i18n)` — the same grouping function the sidebar's
   `DefaultNavClient` uses — so groups, order, and labels always mirror. 1:1 tenant
   collections render a single **Edit** card (direct doc href from
-  `getDirectNavLinks`), never "Create new". The Payouts card is appended to the
-  My Studio group to match the sidebar's static link.
+  `getDirectNavLinks`), never "Create new". The Payouts and Integrations cards are
+  appended to the My Studio group to match the sidebar's static links. Custom views
+  that are not collections must stay in `MY_STUDIO_CUSTOM_CARDS`, or the e2e
+  invariant "dashboard card titles mirror sidebar link labels" fails.
 - **Icons**: `@phosphor-icons/react` uses React context with no `'use client'`
   directive — it cannot render inside RSC. Icons are isolated in a client leaf
   (`QuickActionIcon`, `ExternalLinkIcon`) and passed by name; the server components
