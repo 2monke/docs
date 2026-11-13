@@ -31,7 +31,7 @@ GET /api/integrations/[provider]/connect
   │
   ├─ 1. Authenticate user from session headers (getAuthenticatedUser)
   ├─ 2. Resolve audience ('artist' if user in 'users', 'buyer' if in 'customers')
-  ├─ 3. Generate HMAC SHA-256 signed state (createOAuthState: userId, collection, audience, returnUrl)
+  ├─ 3. Generate HMAC SHA-256 signed state (createOAuthState: userId, collection, audience, returnUrl, returnOrigin)
   ├─ 4. Lookup adapter from registry (getIntegrationAdapter(provider))
   └─ 5. Redirect to provider authorization URL (with identify + guilds.join scopes)
   │
@@ -50,7 +50,12 @@ GET /api/integrations/[provider]/callback?code=...&state=...
   │        ├─ If not in server: Joins user to guild with [@Artist or @Customer]
   │        └─ If already in server: Adds role to existing membership
   ├─ 5. Upsert connection record (saveConnectedAccount)
-  └─ 6. Redirect back to client returnUrl (?integration=discord&status=connected)
+  └─ 6. Redirect back to returnOrigin + returnUrl (?integration=discord&status=connected)
+        └─ returnOrigin is the host the artist started on, not the callback host:
+           the redirect URI is a registered platform credential, so the callback
+           always lands on the platform origin, while the session cookie may be
+           scoped to a studio host. Returning to the platform origin there would
+           drop the session and show the login page.
 ```
 
 ## The `IntegrationAdapter` Contract
@@ -91,7 +96,8 @@ export interface IntegrationAdapter {
 ## Security & Anti-CSRF Protection
 
 The state parameter used during the OAuth handshake is protected against forgery:
-- **Payload**: Contains `userId`, `userCollection`, `audience`, `returnUrl`, `nonce`, and `timestamp`.
+- **Payload**: Contains `userId`, `userCollection`, `audience`, `returnUrl`, `returnOrigin`, `nonce`, and `timestamp`.
+- **Return origin**: `returnOrigin` is captured from the forwarded host/protocol at `/connect` (falling back to the request URL) and is the host the callback redirects to. `returnUrl` stays relative and is validated by `safeReturnPath`; `returnOrigin` is validated as an http(s) origin by `safeReturnOrigin`.
 - **HMAC SHA-256**: Signed using `process.env.PAYLOAD_SECRET`.
 - **Expiration**: Rejected if age exceeds 15 minutes.
 - **Audience Enforcement**: Server-signed during `/connect` and cannot be tampered with by client query parameters.
@@ -133,7 +139,43 @@ DISCORD_GUILD_ID="your_community_server_id"
 DISCORD_ARTIST_ROLE_ID="role_id_for_verified_artists"
 DISCORD_CUSTOMER_ROLE_ID="role_id_for_verified_buyers"
 DISCORD_ARTIST_CHANNEL_ID="optional_channel_id_for_artist_inquiries"
+# Optional: origin the OAuth callback is registered under (defaults to
+# NEXT_PUBLIC_SERVER_URL)
+INTEGRATIONS_REDIRECT_ORIGIN="https://your-platform-domain"
 ```
+
+### Registering the redirect URI
+
+Providers compare `redirect_uri` character for character against the app's
+registered list. The platform resolves it once, in
+`src/lib/integrations/redirect-uri.ts`, from configuration — never from the
+request host. Register exactly:
+
+```
+<INTEGRATIONS_REDIRECT_ORIGIN or NEXT_PUBLIC_SERVER_URL>/api/integrations/discord/callback
+```
+
+Discord Developer Portal → your app → **OAuth2 → Redirects**.
+
+Do not register a studio subdomain or a custom domain. `/api` is excluded from
+the host proxy, so a connect click on any host would otherwise present that
+host as the callback and Discord would answer *Invalid OAuth2 redirect_uri*.
+Both halves of the handshake (authorize and token exchange) read the same
+configured value, so they cannot disagree — a mismatch there surfaces later as
+`invalid_grant` even though the artist approved the consent screen.
+
+Local development runs `next dev --experimental-https` on `https://localhost:3000`,
+so either register `https://localhost:3000/api/integrations/discord/callback`
+(or set `NEXT_PUBLIC_SERVER_URL=https://localhost:3000`), or keep the
+registered `http://localhost:3000` URI and set
+`INTEGRATIONS_REDIRECT_ORIGIN=http://localhost:3000` to match it.
+
+Preview deployments have their own hostnames, so each one needs its own
+registered URI plus a matching `INTEGRATIONS_REDIRECT_ORIGIN`; otherwise the
+button works in production and fails only on the preview. The connect route
+logs the URI it is about to send —
+`[INTEGRATIONS] discord OAuth redirect URI: …` — which is the fastest way to
+compare it with the portal when a mismatch is reported.
 
 ## Discord Slash Commands & HTTP Interactions (`/ask`)
 
