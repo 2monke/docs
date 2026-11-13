@@ -7,7 +7,7 @@ features: []
 
 # Stripe Connect & Destination Charges
 
-How ArtPack routes multi-tenant marketplace payments to connected artists using Stripe Connect Express and Destination Charges with platform split fees.
+How 2monke routes multi-tenant marketplace payments to connected artists using Stripe Connect Express and Destination Charges with platform split fees.
 
 ## Architecture
 

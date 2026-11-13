@@ -7,13 +7,13 @@ features: [auth, commissions, onboarding, pricing, queue, shop]
 
 # Unified UI Component System: Button & Input Architecture
 
-Comprehensive specification of Artpack's standardized Design System UI components, featuring Class Variance Authority (CVA) button styling variants and prefix/suffix adornment-safe input architecture.
+Comprehensive specification of 2monke's standardized Design System UI components, featuring Class Variance Authority (CVA) button styling variants and prefix/suffix adornment-safe input architecture.
 
 ---
 
 ## 1. Architecture & Design Principles
 
-Artpack enforces strict design consistency across both public storefronts and creator studio panels. Instead of ad-hoc Tailwind utility classes on native `<button>` and `<input>` elements, all interactive form controls and triggers utilize reusable, strongly-typed components under `src/components/ui/`.
+2monke enforces strict design consistency across both public storefronts and creator studio panels. Instead of ad-hoc Tailwind utility classes on native `<button>` and `<input>` elements, all interactive form controls and triggers utilize reusable, strongly-typed components under `src/components/ui/`.
 
 ```
 src/components/ui/

@@ -9,7 +9,7 @@ features: []
 
 > **Status**: Shipped
 
-Reference for ArtPack's three upload collections (`media`, `raw-media`, `digital-assets`), maximum file size limits, allowed image and font MIME types, crop guards, and private delivery endpoints.
+Reference for 2monke's three upload collections (`media`, `raw-media`, `digital-assets`), maximum file size limits, allowed image and font MIME types, crop guards, and private delivery endpoints.
 
 ## Three Upload Collections
 

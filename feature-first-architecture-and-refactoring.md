@@ -7,11 +7,11 @@ features: [auth, commissions, dashboard, onboarding, pricing, queue, shop, studi
 
 # Feature-First Architecture & Codebase Refactoring
 
-Comprehensive specification of Artpack's modular Feature-First architecture, feature decomposition, and component colocation.
+Comprehensive specification of 2monke's modular Feature-First architecture, feature decomposition, and component colocation.
 
 ## Architecture Overview
 
-Artpack adopts a **Feature-First Architecture** where domain-specific logic, components, state, server actions, and services are encapsulated within self-contained modules under `src/features/<feature-name>/`. App Router routes (`src/app/`) and Payload CMS admin panels serve as thin consumers and coordinators.
+2monke adopts a **Feature-First Architecture** where domain-specific logic, components, state, server actions, and services are encapsulated within self-contained modules under `src/features/<feature-name>/`. App Router routes (`src/app/`) and Payload CMS admin panels serve as thin consumers and coordinators.
 
 ```
 src/

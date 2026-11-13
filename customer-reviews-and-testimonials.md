@@ -17,7 +17,7 @@ Commission reviews are stored in `src/collections/CommissionReviews.ts` (under *
 
 ### Token-Based Review Invitation & Submission
 1. **Automatic & Manual Invites**:
-   - When an artist finalizes a commission in `finalizeCommissionAction` (`src/features/queue/actions/deliverable-actions.ts`), ArtPack generates a single-use review token (`generateReviewToken` in `src/lib/security/reviewTokens.ts`), stores only its SHA-256 hash (`hashReviewToken`) on `commissions.reviewToken`, sets `reviewStatus: 'invited'` and `reviewRequestSentAt`, and emails `/review/commission/[token]` to the customer.
+   - When an artist finalizes a commission in `finalizeCommissionAction` (`src/features/queue/actions/deliverable-actions.ts`), 2monke generates a single-use review token (`generateReviewToken` in `src/lib/security/reviewTokens.ts`), stores only its SHA-256 hash (`hashReviewToken`) on `commissions.reviewToken`, sets `reviewStatus: 'invited'` and `reviewRequestSentAt`, and emails `/review/commission/[token]` to the customer.
    - Artists can also send or re-send a review invite for a completed commission via the `/api/commissions/:id/send-review-invite` endpoint (`src/collections/endpoints/sendCommissionReviewInvite.ts`).
 2. **Submission Rules (`submitCommissionReviewAction` in `src/features/reviews/actions/create-commission-review.action.ts`)**:
    - **Rate Limiting**: Capped per IP by `reviewRateLimiter`.

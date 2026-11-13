@@ -13,7 +13,7 @@ How customer (`customers`) and artist/admin (`users` + `artists`) accounts authe
 
 ## Dual Account Architecture (`customers` vs. `users` & `artists`)
 
-ArtPack separates buyers and studio members into distinct Payload auth collections:
+2monke separates buyers and studio members into distinct Payload auth collections:
 
 - **Customers (`src/collections/Customers.ts`)**: Buyers who submit commissions, purchase digital shop products, join chat rooms, and leave reviews.
 - **Studio Users (`src/collections/Users.ts`) & Artist Profiles (`src/collections/Artists.ts`)**: Studio owners and team members authenticate against `users` (which carries `roles` and `tenants`) while public bio, avatar, and social links live in `artists`, linked to `src/collections/Studios.ts` (`src/features/studios`).

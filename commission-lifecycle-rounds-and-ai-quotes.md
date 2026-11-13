@@ -9,7 +9,7 @@ features: [commissions, queue]
 
 > **Status**: Shipped
 
-End-to-end reference for how commission rounds (`sprints`), customer submissions (`commissions`), AI price estimation, artist quote reviews, queue progress tracking (`queue`), and final artwork delivery operate in ArtPack.
+End-to-end reference for how commission rounds (`sprints`), customer submissions (`commissions`), AI price estimation, artist quote reviews, queue progress tracking (`queue`), and final artwork delivery operate in 2monke.
 
 ## Commission Rounds (`sprints`) & Slot Limits
 

@@ -10,9 +10,9 @@ A universal provider-adapter architecture for third-party platform integrations 
 
 ## Scope & Purpose
 
-ArtPack artists and buyers interact across external social platforms. Rather than scattering one-off columns (`discordId`, `discordToken`, etc.) across multiple collections:
+2monke artists and buyers interact across external social platforms. Rather than scattering one-off columns (`discordId`, `discordToken`, etc.) across multiple collections:
 1. **Universal Adapter Pattern**: Third-party services implement a standard `IntegrationAdapter` contract.
-2. **Automated Server Onboarding & Role Sync**: When linking Discord, users are automatically added to the ArtPack Discord guild via the Discord Bot API and granted their respective community role (**`@Artist`** or **`@Customer`**).
+2. **Automated Server Onboarding & Role Sync**: When linking Discord, users are automatically added to the 2monke Discord guild via the Discord Bot API and granted their respective community role (**`@Artist`** or **`@Customer`**).
 3. **Extensibility**: Adding new providers (Twitter/X, Bluesky, Twitch) requires only implementing an adapter class without changing the database schema or OAuth route logic.
 
 ## Architecture

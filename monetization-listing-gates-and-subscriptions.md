@@ -12,7 +12,7 @@ features: [commissions, onboarding, shop, studios, tipping]
 
 ## Overview
 
-ArtPack is a transactional creator platform (AI pricing, automated queue progression upon payment, instant digital shop fulfillment, split payouts, buyer protection). 
+2monke is a transactional creator platform (AI pricing, automated queue progression upon payment, instant digital shop fulfillment, split payouts, buyer protection). 
 
 Because the entire platform lifecycle relies on automated payment settlement, **Stripe Connect is the mandatory payment rail**. If a studio has not connected Stripe, it cannot accept payments or sell products. 
 
@@ -59,7 +59,7 @@ Two distinct gates are enforced:
 
 ### Why Subscriptions Were Rejected as a Stripe Connect Substitute
 
-1. **Breaks core workflows**: ArtPack is not a static website builder. Commission queues, automated file delivery, and client reviews depend on verified payments.
+1. **Breaks core workflows**: 2monke is not a static website builder. Commission queues, automated file delivery, and client reviews depend on verified payments.
 2. **Prevents dead-end buyer traffic**: Charging an artist a monthly subscription for a storefront where checkout is disabled creates a degraded buyer experience and forces transactions off-platform (leakage).
 3. **Reduces operational overhead**: Avoids building and maintaining complex billing state machines, proration, and dunning flows for an inferior product tier.
 
@@ -74,7 +74,7 @@ The fee is resolved per studio by `resolveStudioPlatformFee` / `resolveStudioFee
 
 Why the floor exists: with destination charges the platform pays Stripe's processing fee from its own balance (`fees_collector: 'application'`), so any collected fee below Stripe's actual cost would run the balance negative — see `docs/stripe-connect-destination-charges.md`.
 
-- **Future Add-on Subscriptions (Optional Pro Tier)**: Subscriptions may be introduced in the future **on top of** Stripe Connect (e.g., *ArtPack Pro*: 0% platform fee, custom domain routing, priority support), but will never replace the Stripe Connect requirement for transacting.
+- **Future Add-on Subscriptions (Optional Pro Tier)**: Subscriptions may be introduced in the future **on top of** Stripe Connect (e.g., *2monke Pro*: 0% platform fee, custom domain routing, priority support), but will never replace the Stripe Connect requirement for transacting.
 
 ---
 

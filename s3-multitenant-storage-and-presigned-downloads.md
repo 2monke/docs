@@ -6,7 +6,7 @@ features: []
 
 # Multi-Tenant S3 Storage, Folder Partitioning & Streamed Deliverables
 
-How ArtPack splits public storefront media from purchased/private assets: public media is cached on CloudFront, while digital assets and commission deliverables live in a private bucket and are delivered only through the access-checked streaming gateways.
+How 2monke splits public storefront media from purchased/private assets: public media is cached on CloudFront, while digital assets and commission deliverables live in a private bucket and are delivered only through the access-checked streaming gateways.
 
 ## Architecture
 

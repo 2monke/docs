@@ -17,7 +17,7 @@ Each studio storefront exposes a `/tip` route backed by `src/collections/Tips.ts
 
 - **Minimum Amount & Currency**: Tips are denominated in `EUR` (`currency: 'EUR'`, stored in cents on `tips.amount`). The minimum tip is **€1.00** (`amount < 1` is rejected with `"Minimum tip is €1.00"`).
 - **Supporter Details**:
-  - `userEmail` (`tips.email`) is required so Stripe Checkout and ArtPack can send a receipt (`"Email is required"`).
+  - `userEmail` (`tips.email`) is required so Stripe Checkout and 2monke can send a receipt (`"Email is required"`).
   - `userName` (`tips.name`) and `message` (`tips.message`) are optional supporter fields displayed to the artist in the admin panel.
   - If the supporter is logged in (`src/features/auth`), their `users` or `customers` account is linked on `tips.user`.
 - **Stripe Connect Payment Gate**:

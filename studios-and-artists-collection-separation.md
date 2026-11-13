@@ -75,7 +75,7 @@ The profile entity representing individual creator identities:
 
 ## 3. Tenant Scoping Across Collections
 
-All tenant-scoped collections in ArtPack maintain their primary tenant foreign key pointing directly to `studios` (`relationTo: 'studios'`):
+All tenant-scoped collections in 2monke maintain their primary tenant foreign key pointing directly to `studios` (`relationTo: 'studios'`):
 
 | Collection | Tenant Relation Field | Description |
 | :--- | :--- | :--- |

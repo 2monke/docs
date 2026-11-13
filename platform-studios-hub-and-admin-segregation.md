@@ -6,7 +6,7 @@ features: []
 
 # Platform "My Studios" Hub & Superadmin CMS Segregation
 
-How ArtPack segregates artist creator workspace management from low-level Payload CMS database tables, providing a multi-tenant studio hub at `/studios`, smart subdomain routing, and strict superadmin-only access to `/admin`.
+How 2monke segregates artist creator workspace management from low-level Payload CMS database tables, providing a multi-tenant studio hub at `/studios`, smart subdomain routing, and strict superadmin-only access to `/admin`.
 
 ---
 

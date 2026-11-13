@@ -6,7 +6,7 @@ features: []
 
 # Theme Live Preview
 
-How the ArtPack theme editor shows unsaved (draft) theme changes in real-time across any page.
+How the 2monke theme editor shows unsaved (draft) theme changes in real-time across any page.
 
 ## Architecture
 

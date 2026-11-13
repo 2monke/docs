@@ -15,7 +15,7 @@ a Cloudflare Worker. This repository keeps only a proxy and the UI.
 
 ## Scope & Purpose
 
-ArtPack provides two distinct customer journeys:
+2monke provides two distinct customer journeys:
 
 1. **Buyers / Art Collectors**: requesting commissions, monitoring progress,
    purchasing digital goods from studio shops, leaving tips, and submitting
@@ -101,8 +101,7 @@ rules to buyers, or buyer instructions to artists:
 
 Audience is resolved **server-side, never by the caller**:
 
-- The in-app proxy derives it from the session: `customers` and anonymous
-  storefront visitors are `buyer`; `users` are `artist`.
+- The in-app proxy derives it from the session: `customers` are `buyer`; `users` are `artist`. Unauthenticated requests are rejected with 401.
 - The Discord gateway derives it from channel and role, and sends it explicitly.
 - The service endpoint **requires** the field and rejects a request without it.
   A default is how artist questions silently start receiving buyer answers.

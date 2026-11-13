@@ -7,7 +7,7 @@ features: [commissions, dashboard, pricing, queue, shop]
 
 # Liquid Glass & CSS Data-Attribute Cascade Architecture
 
-Specification of Artpack's zero-runtime Liquid Glass theme architecture and declarative CSS variable cascade system, replacing client-side hook evaluation with high-performance CSS data-attributes and surface tokens.
+Specification of 2monke's zero-runtime Liquid Glass theme architecture and declarative CSS variable cascade system, replacing client-side hook evaluation with high-performance CSS data-attributes and surface tokens.
 
 ---
 

@@ -9,7 +9,7 @@ reviewed: true
 
 Status: decided, implementation pending
 Date: 2026-09-09
-Scope: Next.js 16 `use cache` (`cacheComponents: true`), multi-tenant ArtPack on Vercel
+Scope: Next.js 16 `use cache` (`cacheComponents: true`), multi-tenant 2monke on Vercel
 
 ## Decision
 

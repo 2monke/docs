@@ -6,7 +6,7 @@ features: []
 
 # Centralized Dashboard Access Guard, Session Bridge & Multi-Tenant Isolation
 
-How ArtPack protects `/dashboard` and its sub-routes with a centralized server-side authorization guard, eliminates magic query numbers, and provides seamless cross-subdomain session transfers across root platform and artist studio subdomains.
+How 2monke protects `/dashboard` and its sub-routes with a centralized server-side authorization guard, eliminates magic query numbers, and provides seamless cross-subdomain session transfers across root platform and artist studio subdomains.
 
 ## Architecture
 

@@ -9,7 +9,7 @@ features: [studio-settings, studios]
 
 > **Status**: Shipped
 
-How ArtPack dispatches tenant-branded transactional emails (via Brevo SMTP and Upstash QStash) and studio Discord webhook alerts, and how artists configure notification channels in `/admin/notification-settings`.
+How 2monke dispatches tenant-branded transactional emails (via Brevo SMTP and Upstash QStash) and studio Discord webhook alerts, and how artists configure notification channels in `/admin/notification-settings`.
 
 ## Per-Tenant Notification Settings (`notification-settings`)
 
