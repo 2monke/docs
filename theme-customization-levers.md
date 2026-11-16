@@ -220,7 +220,14 @@ name the element:
 
 - 🎨 **Colors** · 🔤 **Typography** — unchanged, and still the two groups the guide
   dives into field by field.
-- 🖼️ **Header** — `headerStyle`.
+- 🖼️ **Header** — `headerStyle`, plus the two brand-image slots (`logo` desktop
+  wordmark, `logoMobile` compact mark). Brand resolution is theme-first, then the
+  legacy studio document; when **neither** has an image the header falls back to the
+  **platform mark** (`public/branding/logo/logo-tr.svg`) — the same file on both
+  themes, because the artwork is drawn to read on either ground (white face on dark,
+  plum outline on light) and any CSS recolour destroys the eyes and smile. The studio
+  name stays beside it: the platform mark says who hosts the shop, not whose shop it
+  is.
 - 🃏 **Cards & media** — `cardStyle`, `borderRadius`, `borderWidth`, `artworkFraming`:
   the surfaces, border weight, corner radius, and artwork framing across cards,
   bento tiles, hero panels and socials.
@@ -262,6 +269,31 @@ name the element:
   `/theme-preview` renders a glass panel + glass/solid button pair so the
   toggle is visible regardless of the artist's card style.
 - 📐 **Layout** — `containerMaxWidth`, `sectionSpacing`.
+- 🏷️ **Platform card** — `platformCardCrest`, `platformCardCrestImage`: how the
+  studio's card looks in the **platform home's live-studios row**. These are the one
+  group that does *not* style the artist's own site, which is why they are deliberately
+  absent from `sanitizeThemeDraft` and from the showcase registry — the live preview
+  would have nothing true to show for them.
+  - `platformCardCrest` — `minimal` (borderless circle), `gilded` (fixed champagne
+    gold rings and corner trims), `cyberpunk` (angular brackets and a neon seam in the
+    studio's primary), `holo` (conic foil ring in the board's lavenders; the hue
+    drift is disabled under `prefers-reduced-motion`), `custom` (the artist's own
+    frame artwork).
+  - `platformCardCrestImage` — the `media` upload for `custom`; a transparent
+    PNG/WebP with an empty centre works best. It follows the same rule as the artist
+    avatar (square, at least 400 × 400 px, enforced by
+    `squareImageUploadValidator`). Empty falls back to the minimal ring at resolve
+    time, so the card never renders an empty frame.
+
+  The card keeps the **platform's** frame — square plate, platform surface, one name,
+  one Open link — and only the interior follows the theme: the avatar crest, a soft
+  ambient glow built from `primaryColor`/`accentColor`, the button colour/shape and
+  the name's typeface. A banner strip was trialled and removed before release (it read
+  as an arbitrary band); the glow has no edge and cannot look misplaced. The projection
+  is a named slice (`crest`, `crestImageUrl`, `primaryColor`, `accentColor`,
+  `buttonShape`, plus the font family); the theme document itself never reaches the
+  landing page's public RSC payload. Rules live in `src/lib/theme/platform-card.ts` and
+  are pinned by `tests/int/platform-card-look.int.spec.ts`.
 
 The groups are **unnamed** Payload groups, so this is presentation only: every field
 still lives at the root of the document and no generator, live-preview or onboarding
@@ -345,7 +377,7 @@ Mechanical rules the tests enforce rather than trust:
   bridge target are intact.
 
 The collection's groups are ordered **Header → Colors → Typography → Cards & media →
-Buttons & links → Layout → Effects** — the header leads because it is the first
+Buttons & links → Layout → Platform card → Effects** — the header leads because it is the first
 thing a visitor sees on the page, so it is the first control the artist meets; the
 setup guide's walk (colors → typography → cards → effects) skips it and still runs
 front-to-back. The order is a deliberate choice, pinned by
