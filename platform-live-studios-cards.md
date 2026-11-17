@@ -52,6 +52,11 @@ card component and the tests share one implementation.
 export interface StudioCardLook {
   crest: 'minimal' | 'gilded' | 'cyberpunk' | 'holo' | 'custom'
   crestImageUrl: string | null   // only while crest === 'custom'
+  avatarShape: 'circle' | 'square' | 'star' | 'pentagram'
+  frameStyle: 'minimal' | 'wave' | 'pixel' | 'festive' | 'ears'
+  frameFinish: 'plain' | 'neon' | 'gradient'
+  frameWidth: 'thin' | 'medium' | 'thick'
+  avatarZoom: number   // percent, 100–160
   primaryColor: string   // normalized #rrggbb
   accentColor: string    // normalized #rrggbb
   buttonInk: string      // hsl(...) contrast ink for the Open button
@@ -63,7 +68,8 @@ export interface StudioCardLook {
 ```
 
 Every branch is total. Unknown crests fall back to `minimal`; a `custom` crest with no
-populated upload falls back to the minimal ring; invalid colours fall back to the
+populated upload falls back to the minimal ring; an unknown shape or frame falls back
+to `circle` / `minimal`; invalid colours fall back to the
 platform palette (`PLATFORM_BRAND.primary` / `accent`); a three-digit hex is expanded
 to six so `${colour}59` alpha suffixes stay valid CSS. A single bad field can never
 blank a card or throw during a server render.
@@ -79,8 +85,209 @@ blank a card or throw during a server render.
 | `custom` | The artist's own artwork, drawn `object-contain` over the avatar window (a transparent PNG/WebP with an empty centre works best). It is never cropped; no upload resolves to `minimal`. |
 
 All decorative layers are `aria-hidden` and `pointer-events-none`; the Open link is
-the card's only control. The avatar window itself is never cropped differently by a
-crest — a crest decorates *around* (or over) one circle.
+the card's only control. A crest decorates *around* (or over) the avatar window — it
+never re-crops the portrait.
+
+### Artist name and status styling
+
+The card carries two independently styleable text elements, both edited in
+Studio & Artist → Artist Profile:
+
+- the **display name** (`nameColor`, `nameStyle` on the artist) — the headline;
+- the **status pill** (`statusColor`, `statusStyle`) — the badge under it.
+
+They share the same three style values (`plain`, `neon`, `ambient`) but not the
+resolver. `resolveStatusPillStyle` can set white text because a pill has its own
+tinted background; `resolveCardNameStyle` cannot, because the name sits on the
+card's light plate where white ink disappears. A neon *name* therefore keeps its
+own colour and adds a three-layer glow (`2px / 8px / 16px`), and an ambient one adds
+a single soft halo. The colour is normalised through `normalizeHexColor`, so a short
+hex is expanded and a non-colour is ignored rather than emitted as a broken value;
+no colour means "keep the card's default ink", which is what keeps an unstyled card
+byte-identical to before.
+
+The glow radii are deliberately small: the heading is line-clamped, which implies
+`overflow: hidden`, and a larger bloom is clipped at the heading's own box instead
+of fading out.
+
+**A glow always paints.** Choosing `neon`/`ambient` with no colour used to return no
+style at all, so the button stored a value and changed nothing on the card — a dead
+control. The resolver now falls back to the studio's accent (`look.hoverColor`) and
+then to the platform accent, so the style is visible the moment it is clicked; an
+explicit colour still wins, and `plain` with no colour stays untouched.
+
+`tests/int/card-name-styling.int.spec.ts` pins the resolver (including "never
+white", shorthand-hex expansion and invalid input) and that the name styling does
+not leak into the status pill.
+
+### The window and the ornament are two different things
+
+A studio can replace the plain avatar window with a **shape** (circle, square, star,
+pentagram) and hang a **frame style** on it (minimal, wave, pixel, festive, cat
+ears),
+painted in one of three **finishes** (plain, neon, gradient), at one of three
+**weights** (thin, medium, thick), with the portrait **zoomed** inside the window
+(100–160%) and its **colours** chosen independently of the studio palette. All of it
+is chosen in Studio & Artist → Artist Profile, next to a live preview of this very
+card.
+
+### Frame colours
+
+Three optional theme fields drive the frame, separately from `primaryColor` /
+`accentColor`:
+
+| Field | Applies to | Empty falls back to |
+|---|---|---|
+| `platformCardFrameColor` | Plain, Neon | studio accent |
+| `platformCardFrameGradientFrom` | Gradient | studio primary |
+| `platformCardFrameGradientTo` | Gradient | the frame colour |
+
+They are separate on purpose: a studio's palette drives its storefront, and the
+frame sits on someone else's discovery card — a green studio with a pink frame is a
+legitimate choice. **Every fallback reproduces the previous behaviour exactly**
+(plain/neon followed the accent; the gradient ran primary → accent), so no existing
+card changes appearance until an artist picks a colour.
+
+The gradient's end defaults to the *frame colour*, not the studio accent — with a
+custom ink and a custom start, falling back to the accent produced a gradient into a
+colour the artist never chose.
+
+The admin shows only the controls the chosen finish paints with: one swatch for
+Plain/Neon, two for Gradient. `tests/int/frame-colours.int.spec.ts` pins the resolver
+and the paint; `tests/int/frame-colours-live.int.spec.ts` pins that a change reaches
+the preview immediately (the preview reads the **form**, not the saved theme).
+
+**The window** is the clean silhouette the portrait is clipped to. **The ornament**
+is drawn artwork placed against that silhouette — a water horizon, a bunting
+garland, or a pair of cat ears.
+
+That split is load-bearing, and the first version got it wrong. It *perturbed the
+silhouette* per style: pushed the outline in and out to make a wave, a gear, a
+sawtooth. That can only ever produce a **texture of the shape** — the names promised
+artwork and the render delivered a zigzag, which is why it read cheap however it
+moved. Drawing the motif instead means:
+
+- one drawing serves every shape — the same garland arcs over a circle, a star and
+  a pentagram, placed by the window's bounds (`src/lib/theme/frame-ornaments.ts`);
+- the portrait keeps a clean, deliberate outline instead of inheriting a lumpy one;
+- ornament can be tuned independently of the clip, so it can be made to read at
+  90 px (three or four bold shapes) instead of at vector-poster detail.
+
+`pixel` is the exception, and deliberately so: its cell ring *is* a frame, built on
+a real 24 × 24 lattice (see below).
+
+### Frame effects
+
+Every style but `minimal` carries one motion. The particle fields come from
+`src/lib/theme/frame-particles.ts`, which is **seeded**: the card is server-rendered
+and then hydrated, so a `Math.random()` field would differ between the two passes and
+break hydration. The same seed always yields the same flakes and sparks, so the
+artist's preview is exactly what visitors see.
+
+- **wave** — a water horizon: three filled bands in the bottom fifth of the window,
+  sliding horizontally at different speeds and in opposite directions, each with a
+  bright crest line stroked along its top edge, plus foam. Every band is drawn one
+  period wider than the box on **both** sides, so travelling exactly one period is a
+  seamless loop: the water leaving the left edge is the water arriving at the right.
+  No fades, no resets — a reset reads as a looping GIF, not as water.
+- **pixel** — a full-height pixel snowfall: 42 small flakes (2 / 3 / 4 units, ~5–11 px
+  on a card) on a 2-unit snow lattice, in three depths. Far flakes are dim (0.20–0.34)
+  and slow (5.6–7.8 s); near ones bright (0.72–0.90) and quick (2.9–3.6 s). Each flake
+  has its own delay (spread over ~92% of its cycle) and a signed drift, so the field is
+  continuous, never pulses in unison, and no two flakes line up twice. Flakes start
+  8 units above the box and end 108 below it — they never appear or vanish mid-card.
+  **Small flakes are the point**: a 12-unit flake is a square the size of the artist's
+  eye, which reads as debris. Only the cell-painted frames snow: on `star`/`pentagram`
+  most of the box is negative space, and flakes falling through it read as litter.
+- **festive** — a bunting garland across the top (seven pennants on a sagging string,
+  alternating the studio's two colours, each swaying from its own point) plus three
+  four-point sparkles, and **confetti** tumbling the full height of the window.
+  Confetti replaced the earlier firework bursts, which were built from `<circle>`
+  sparks: at 3 px a circle is a speck, and a ring of specks never reads as
+  celebration. Pieces are rectangles (taller than wide) that spin on their own signed
+  axis as they fall, in the two studio colours plus a little paper white. The
+  garland's sag is capped at 9% of the window height — a deeper dip drops the
+  pennants onto the artist's eyes.
+- **ears** — a pair of cat ears on the top edge, after Ahri's: broad base, softly
+  rounded point, a large inner ear in the accent colour, swept 7° outward. The only
+  style that **reserves headroom**: the window is inset 15 units so the ears have
+  somewhere to grow, because at full extent the top of the window is 3 units from the
+  top of the box and the ears were sliced flat. Their twitch is a single flick per
+  cycle (not a sway) with the ears offset, so the pair reads as an animal rather than
+  a plant. Offered on the closed windows only — two ears flanking a star's top point
+  read as a crown rather than a cat.
+
+Motion is depth, not noise: on hover the snow speeds up ~18%, the water ~28%, the
+pennants ~30% and the confetti ~22%. `prefers-reduced-motion: reduce` stops every
+motion and keeps the ornament.
+
+**The rules live in `src/lib/theme/frame-effects.css`, imported by
+`AvatarFrameSvg`** — deliberately not in `globals.css`. The card renders in two
+bundles with separate stylesheets: the platform pages load `globals.css`, the
+Payload admin loads only `(payload)/custom.scss`. Rules parked in a layout-owned
+stylesheet therefore never reached the admin preview — the effects rendered as static
+marks, in the very screen where the artist picks the style. Importing the stylesheet
+from the component makes the motion travel with the component.
+`tests/int/frame-effects-css.int.spec.ts` pins both halves of that contract: the
+import, and every `ap-frame-*` class having a rule.
+
+`tests/int/frame-ornament-visual.int.spec.ts` rasterizes the real component across
+all four shapes when `FRAME_QA_RENDER=1`, so the artwork can be looked at (it is
+inert in a normal run).
+
+**Concave windows carry `minimal` only.** `star` and `pentagram` have thin arms and a
+lot of negative space, so every decorative style either floats in that space or is
+clipped into fragments by it — reported as "star only looks good with minimal" and
+"pentagram with pixel looks weird". `frameStylesForShape` therefore offers `minimal`
+for those two and the component degrades a stored value to `minimal`; the admin dims
+the unavailable buttons and says why. The shapes themselves stay.
+
+**Zoom goes both ways: 50–160%.** A star window clips the corners away, so fitting
+the whole portrait inside the shape means scaling *down* — a floor of 100% made that
+impossible ("zoom does not work with 0.5"). 100% is the neutral middle.
+
+**Square means square.** Its window is a 90° clip (`borderRadius: 0`), its outline
+is four sharp corners, and its pixel ring has no chamfer — it used to be a rounded
+rectangle, which read as "circle with flat sides" rather than a deliberate
+hard-edged option.
+
+The geometry contract, built once in `src/lib/theme/avatar-frame.ts`:
+
+- the **portrait is clipped to the window's outline** (`clip-path`), so the image
+  fills the shape — never a hollow ring with a gap inside it;
+- the **SVG outline strokes the same point list**, so the two layers cannot drift;
+- the outline is normalized inside the 0–100 box *from the stroke width*
+  (`extent = 48.4 − stroke/2`), so a thick frame cannot paint over the name and
+  status pill above the avatar;
+- the `neon` finish is a wide translucent stroke under a bright one, not an SVG
+  blur — no filter halo to spill outside the box.
+
+`wave`, `festive` and `ears` therefore return the **same points as `minimal`**:
+what distinguishes them is the ornament (`frame-ornaments.ts`), not the clip.
+`buildAvatarFrameGeometry(shape, style).svgPoints` is asserted identical across those
+four styles, which is what makes "the style is drawn, not traced" a testable claim
+rather than a comment.
+
+`pixel` on **circle** and **square** is painted differently: as a real 8-bit ring of
+filled cells on a 24 × 24 lattice (4-unit cells, row bands starting at 2 so the
+centre 50 is a cell edge and the ring is both symmetric and grid-aligned). The ring
+is one, two or three cells thick by weight, chamfered at the square's corners, and
+beveled by surface normal — lit on the top-left half, shaded on the bottom-right —
+with the cells merged into a few dozen `<rect>`s. Its clip is the boundary of those
+cells, so it is the same silhouette rule as every other style. `pixel` on star and
+pentagram keeps a stroked stepped band, at the same visual weight.
+
+There are **no accent dots**: an earlier version sampled outline vertices and drew
+small accent-coloured markers on `pixel` and `festive`; at card size they
+read as specks, not ornament.
+
+Shapes are normalized to the same visual extent, so switching circle → star does not
+resize the portrait. `tests/int/avatar-frame.int.spec.ts` pins the shared window,
+the in-box guarantee, the lattice, the closed ring, the bevel and the weight ladder;
+`tests/int/avatar-frame-effects.int.spec.ts` pins the ornament and its placement.
+
+A frame style other than `minimal` (or any non-plain finish) takes the place of the
+crest treatment on the card; `minimal` + `plain` falls through to the crest.
 
 ### The square-image rule
 
@@ -233,12 +440,11 @@ observer ten times with the same width and asserts nothing moves.
 
 ### The same plate on `/studios`
 
-The workspace hub renders `StudioCard` too, with three switches flipped:
+The workspace hub renders `StudioCard` too, with two switches flipped:
 
 | Prop | Discovery row | `/studios` |
 |---|---|---|
 | `actions` | default single **Open** | **Admin** (primary) + **Storefront** (secondary, new tab) |
-| `showCommissionsStatus` | `true` | `false` |
 | `animated` | `true` (travelling band) | `false` (held gradient frame) |
 
 The address is gone: identity is the avatar and the studio name. Two actions sit
@@ -295,29 +501,41 @@ invalidator:
 
 - themes → crest / crest artwork / colours / font (`revalidateThemeCache`)
 - media → a replaced avatar or crest file (`revalidateMediaCache`)
-- artists → avatar change (`revalidateArtistCache`)
+- artists → avatar / status change (`revalidateArtistCache`)
 - studios → name / publication / Stripe readiness (`revalidateStudioCache`)
-- sprints → open-commissions dot (`revalidateSprintsCache`)
+- sprints → open-commissions filter (`revalidateSprintsCache`)
 
 ## Files
 
 - `src/lib/utils/image-dimensions.ts` — the square/size rule, the browser pre-flight
   and the Payload field validator factory.
 - `src/lib/theme/platform-card.ts` — enums, defaults, hex normalization, look and
-  avatar resolvers.
+  avatar resolvers, and the plain-shape CSS geometry.
+- `src/lib/theme/avatar-frame.ts` — the window silhouette per shape (plus `pixel`'s
+  cell ring) and the plain-shape geometry.
+- `src/lib/theme/frame-ornaments.ts` — the drawn artwork: wave bands, bunting and
+  cat ears, placed against the window's bounds.
+- `src/lib/theme/frame-particles.ts` — seeded snow and firework fields (hydration-safe).
+- `src/lib/theme/frame-effects.css` — the choreography; imported by the component so
+  it reaches both the platform bundle and the admin preview.
+  CSS `clip-path`, SVG path and accent-dot anchors, normalized into the avatar box.
 - `src/lib/theme/google-fonts.ts` — `buildGoogleFontsUrl`, `SINGLE_WEIGHT_GOOGLE_FONTS`.
 - `src/features/studios/actions/get-studio.action.ts` — projection (`cardLook`,
   `avatar`), theme destructured off the returned studio.
 - `src/components/platform/PlatformLandingPage.tsx` — maps `FeaturedStudio` →
   `LiveStudioCard`, builds the row's single font URL.
 - `src/components/platform/StudioCard.tsx` — the shared plate: `StudioCard`,
-  `AvatarCrest`, `CrestCorners`, `AmbientGlow`, and the action-button renderer.
-  Used by the discovery row (defaults) and by `/studios` (static, two actions, no
-  commissions dot). Props: `actions`, `showCommissionsStatus`, `animated`.
+  `AvatarCrest`, `CrestCorners`, `AmbientGlow`, `AvatarFrameSvg`, and the
+  action-button renderer. Used by the discovery row (defaults) and by `/studios`
+  (static, two actions). Props: `actions`, `hideActions`, `animated`, `compact`.
+  There is no commissions dot: the artist's status pill is the only badge the
+  plate carries.
+- `src/components/platform/AvatarFrameSvg.tsx` — the decorative frame layer; draws
+  the geometry from `avatar-frame.ts` over the portrait.
 - `src/components/platform/LiveStudiosRow.tsx` — the marquee row; re-exports the
   card and its types so existing import paths keep working.
 - `src/app/(frontend)/(platform)/studios/page.tsx` — the workspace hub, now the
-  shared card: avatar + name + **Admin** / **Storefront**, no address, no dot, no
+  shared card: avatar + name + **Admin** / **Storefront**, no address, no
   travelling frame.
 - `src/collections/Themes.ts` — the **Platform card** group.
 - `src/components/admin/PlatformCardCrestField.tsx` — crest picker (icon specimens
@@ -328,6 +546,7 @@ invalidator:
 - `src/migrations/20261114_133500_platform_card_look.ts` — crest enum, the crest
   column, its media FK and index (idempotent).
 - `src/app/globals.css` — `.live-studio-crest--holo` drift + reduced-motion guard.
+  (The avatar-frame effects are *not* here — see `src/lib/theme/frame-effects.css`.)
 
 ## Tests
 

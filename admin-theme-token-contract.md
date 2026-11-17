@@ -29,10 +29,12 @@ calm, and Payload's geometry was re-pointed at the shared scale:
    state. Shadows survive only on genuine overlays (`--ap-shadow-float`,
    `--ap-shadow-popover`: drawers, popovers, menus, toasts, the tour) plus focus
    rings. Hover feedback is a border/background colour change, never a lift.
-2. **One card chrome.** `--ap-card-bg` is now `--theme-bg` (cards are the page
-   surface, not a tinted panel), with a 1px `--ap-card-border` hairline and the
-   single `--ap-radius-xl` (14px) radius — the same chrome as Payload's `.card`,
-   the collection grid rows and the pages list groups.
+2. **One card chrome.** `--ap-card-bg` is the platform's white card surface
+   (`--theme-elevation-0`), sitting on the lavender page background
+   (`--theme-bg` = `#FAF6FC`), with a 1px `--ap-card-border` hairline and the
+   single `--ap-radius-xl` (14px) radius. Payload's built-in `.card` uses
+   `--theme-elevation-50`, mapped to the same white, so built-ins and custom
+   views share one chrome.
 3. **No nested boxes.** Settings rows (`.cs-control-box`), tier items
    (`.cs-tier-item-block`) and social links (`.studio-artist-social-item`) are
    hairline divider rows inside their section card at *every* breakpoint — the
@@ -49,8 +51,9 @@ calm, and Payload's geometry was re-pointed at the shared scale:
    paginator, file fields and drawer controls join the scale without new
    overrides; `.pill` (which Payload hardcodes to 3px) is explicitly mapped.
 8. **One accent.** The `--ap-accent-*` hsl family and the `--ap-accent-hex-*`
-   names are aliases of the same `#6366f1` ramp, and every alpha tint derives
-   from it — previously tabs/sidebar used `hsl(241,67%,67%)` while buttons and
+   names are aliases of the same platform-brand plum ramp (`#50324C` family,
+   from `src/lib/theme/platform-brand.ts`), and every alpha tint derives from
+   it — previously tabs/sidebar used `hsl(241,67%,67%)` while buttons and
    gradients used `#6366f1`.
 9. **Desktop tail.** `--ap-page-pad-bottom` (110px) is the mobile save-dock
    budget; desktop uses `--ap-page-pad-bottom-desktop` (48px).
@@ -58,14 +61,27 @@ calm, and Payload's geometry was re-pointed at the shared scale:
 ## 1. Token contract
 
 `src/app/(payload)/styles/_theme-tokens.scss` — the `--ap-*` block inside
-`@layer payload` is the **single source of truth** for admin visual values:
+`@layer payload` is the **single source of truth** for admin visual values.
+Payload's own `--theme-*` tokens are mapped onto the platform palette from
+`src/lib/theme/platform-brand.ts` (background `#FAF6FC`, card white, surface
+`#F3EDF7`, border `#E8E0EB`, text `#2B1A2A`/`#644F66`, primary `#50324C`) so
+the admin and the platform site share one colour language.
 
-- **Accent** — `--ap-accent-300…700` (hsl indigo scale) + hex equivalents
+**Light-only for now (2026-11-16).** `payload.config.ts` sets
+`admin.theme: 'light'`, which pins `data-theme="light"` on every admin request
+and stops Payload's ThemeProvider reading the `payload-theme` cookie or the OS
+`prefers-color-scheme`. The `html[data-theme='dark']` token block and dark
+overrides remain in place, intentionally dormant, until the dark ramp is
+designed against the platform palette; flipping the config back to `'all'`
+re-enables the existing behaviour.
+
+- **Accent** — `--ap-accent-300…700` (platform plum ramp) + hex equivalents
   `--ap-accent-hex-*` for gradients/glows + alpha tints `--ap-accent-a10…a60`.
 - **Status** — `--ap-status-success/-warning/-danger` (+ `-bg`/`-border` and
   `-strong` variants).
 - **Surfaces** — `--ap-card-bg/border/input-bg` aliasing Payload `--theme-*`
-  (`--ap-card-bg` = `--theme-bg`; cards are not tinted panels).
+  (`--ap-card-bg` = `--theme-elevation-0`, the white card surface; the page is
+  `--theme-bg` = platform background).
 - **Radius scale** — `--ap-radius-micro…5xl` (3/4/6/8/10/12/14/16/18/20/24px) +
   `--ap-radius-pill` (999px), plus the Payload bridge `--style-radius-s/m/l`
   → `--ap-radius-sm/md/xl`.
@@ -93,7 +109,7 @@ views and the Payload override layer:
 - `ap-control` / `ap-label` — inputs, selects, labels
 - `ap-btn-base` / `ap-btn-primary` / `ap-btn-secondary` / `ap-btn-disabled`
 - `ap-tabbar` / `ap-tab` — the **single tab language**: segmented pill bar,
-  indigo-tinted active pill
+  plum-tinted active pill
 - `ap-badge` — status pill
 
 Imported by `custom.scss` between `theme-tokens` and `admin-theme`.
@@ -170,8 +186,8 @@ classes (`ap-spin`, `ap-icon-sm/xs`, `ap-text-muted/accent/success`, `ap-link`);
 **Deliberate visual changes** (Option A unification):
 1. Commission Settings tabs switched from underline style to segmented pills;
    Studio/Artist active tab switched from neutral raised pill to the shared
-   indigo-tinted active pill.
-2. Checkbox `accent-color` in commission-settings toggles is now indigo
+   plum-tinted active pill.
+2. Checkbox `accent-color` in commission-settings toggles is now the brand plum
    (`--ap-accent-hex-500`) — previously Payload's default primary leaked
    through because `--theme-primary-500` was never themed.
 3. Tier inputs and CS touch controls converged from 8px to the shared 10px
@@ -184,6 +200,31 @@ classes (`ap-spin`, `ap-icon-sm/xs`, `ap-text-muted/accent/success`, `ap-link`);
 for the flat-surface contract) still needs a run, but note its global setup
 POSTs `/api/seed`, which performs a destructive DB reset — use
 `scripts/verify-admin-invariants.mjs` for a non-destructive equivalent pass.
+
+### 3c. Platform palette pass — light-only admin (2026-11-16)
+
+Two changes, both driven by the platform brand board
+(`src/lib/theme/platform-brand.ts`, mirrored in `globals.css`):
+
+1. **Dark theme is disabled for now.** `src/payload.config.ts` sets
+   `admin.theme: 'light'`. Payload's `getRequestTheme` then pins
+   `data-theme="light"` on the admin `<html>` and the client ThemeProvider
+   skips the `payload-theme` cookie and `prefers-color-scheme` entirely. The
+   dark token block and the 48 `html[data-theme='dark']` override rules remain
+   in place, dormant and ready for a future dark pass.
+2. **The admin now uses the platform palette.** The indigo `#6366f1` accent
+   ramp was replaced by the brand plum ramp (`#50324C` / `#3A2438` / `#2B1A2A`,
+   with `#B69ACF` as the light rung), and every alpha tint/glow derives from
+   `rgb(80, 50, 76)`. Payload's `--theme-*` tokens were remapped to the platform
+   roles: page `#FAF6FC`, white card surface, Surface `#F3EDF7` for
+   raised/hover, border `#E8E0EB`, ink `#2B1A2A`, secondary text `#644F66`.
+   The full elevation `0…1000` ramp is plum-tinted so Payload components that
+   consume un-overridden steps cannot leak neutral gray.
+
+The tour chrome (spotlight pulse, comic pointers, card badges) and the
+`--theme-primary-500/600` legacy aliases now resolve to the same plum ramp.
+Pins: `tests/int/admin-theme-contract.int.spec.ts` (admin theme is `'light'`,
+platform palette values present, no `#6366f1` left in the token contract).
 
 ## 4. Verification
 
