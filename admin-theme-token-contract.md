@@ -77,6 +77,9 @@ re-enables the existing behaviour.
 
 - **Accent** — `--ap-accent-300…700` (platform plum ramp) + hex equivalents
   `--ap-accent-hex-*` for gradients/glows + alpha tints `--ap-accent-a10…a60`.
+- **Landing areas** — `--ap-area-{content,design,settings,shop}` and their
+  `-tint` pairs are wayfinding hues for the four `/admin` area cards only. They
+  never replace the plum interaction accent (buttons, focus rings, active nav).
 - **Status** — `--ap-status-success/-warning/-danger` (+ `-bg`/`-border` and
   `-strong` variants).
 - **Surfaces** — `--ap-card-bg/border/input-bg` aliasing Payload `--theme-*`

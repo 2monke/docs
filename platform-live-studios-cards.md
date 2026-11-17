@@ -52,11 +52,11 @@ card component and the tests share one implementation.
 export interface StudioCardLook {
   crest: 'minimal' | 'gilded' | 'cyberpunk' | 'holo' | 'custom'
   crestImageUrl: string | null   // only while crest === 'custom'
-  avatarShape: 'circle' | 'square' | 'star' | 'pentagram'
+  avatarShape: 'circle' | 'square'
   frameStyle: 'minimal' | 'wave' | 'pixel' | 'festive' | 'ears'
   frameFinish: 'plain' | 'neon' | 'gradient'
   frameWidth: 'thin' | 'medium' | 'thick'
-  avatarZoom: number   // percent, 100–160
+  avatarZoom: number   // percent, 50–160
   primaryColor: string   // normalized #rrggbb
   accentColor: string    // normalized #rrggbb
   buttonInk: string      // hsl(...) contrast ink for the Open button
@@ -122,9 +122,8 @@ not leak into the status pill.
 
 ### The window and the ornament are two different things
 
-A studio can replace the plain avatar window with a **shape** (circle, square, star,
-pentagram) and hang a **frame style** on it (minimal, wave, pixel, festive, cat
-ears),
+A studio can replace the plain avatar window with a **shape** (circle or square) and
+hang a **frame style** on it (minimal, wave, pixel, festive, cat ears),
 painted in one of three **finishes** (plain, neon, gradient), at one of three
 **weights** (thin, medium, thick), with the portrait **zoomed** inside the window
 (100–160%) and its **colours** chosen independently of the studio palette. All of it
@@ -167,8 +166,8 @@ sawtooth. That can only ever produce a **texture of the shape** — the names pr
 artwork and the render delivered a zigzag, which is why it read cheap however it
 moved. Drawing the motif instead means:
 
-- one drawing serves every shape — the same garland arcs over a circle, a star and
-  a pentagram, placed by the window's bounds (`src/lib/theme/frame-ornaments.ts`);
+- one drawing serves every window — the same garland arcs over a circle and a
+  square, placed by the window's bounds (`src/lib/theme/frame-ornaments.ts`);
 - the portrait keeps a clean, deliberate outline instead of inheriting a lumpy one;
 - ornament can be tuned independently of the clip, so it can be made to read at
   90 px (three or four bold shapes) instead of at vector-poster detail.
@@ -197,8 +196,8 @@ artist's preview is exactly what visitors see.
   continuous, never pulses in unison, and no two flakes line up twice. Flakes start
   8 units above the box and end 108 below it — they never appear or vanish mid-card.
   **Small flakes are the point**: a 12-unit flake is a square the size of the artist's
-  eye, which reads as debris. Only the cell-painted frames snow: on `star`/`pentagram`
-  most of the box is negative space, and flakes falling through it read as litter.
+  eye, which reads as debris. Only the cell-painted frames snow, so flakes always
+  fall over a painted ring rather than open space.
 - **festive** — a bunting garland across the top (seven pennants on a sagging string,
   alternating the studio's two colours, each swaying from its own point) plus three
   four-point sparkles, and **confetti** tumbling the full height of the window.
@@ -214,8 +213,7 @@ artist's preview is exactly what visitors see.
   somewhere to grow, because at full extent the top of the window is 3 units from the
   top of the box and the ears were sliced flat. Their twitch is a single flick per
   cycle (not a sway) with the ears offset, so the pair reads as an animal rather than
-  a plant. Offered on the closed windows only — two ears flanking a star's top point
-  read as a crown rather than a cat.
+  a plant. Both windows are closed, so the style is offered on every card.
 
 Motion is depth, not noise: on hover the snow speeds up ~18%, the water ~28%, the
 pennants ~30% and the confetti ~22%. `prefers-reduced-motion: reduce` stops every
@@ -232,19 +230,22 @@ from the component makes the motion travel with the component.
 import, and every `ap-frame-*` class having a rule.
 
 `tests/int/frame-ornament-visual.int.spec.ts` rasterizes the real component across
-all four shapes when `FRAME_QA_RENDER=1`, so the artwork can be looked at (it is
-inert in a normal run).
+both windows when `FRAME_QA_RENDER=1`, so the artwork can be looked at (it is inert
+in a normal run).
 
-**Concave windows carry `minimal` only.** `star` and `pentagram` have thin arms and a
-lot of negative space, so every decorative style either floats in that space or is
-clipped into fragments by it — reported as "star only looks good with minimal" and
-"pentagram with pixel looks weird". `frameStylesForShape` therefore offers `minimal`
-for those two and the component degrades a stored value to `minimal`; the admin dims
-the unavailable buttons and says why. The shapes themselves stay.
+**Star and pentagram windows were removed (2026-11-17).** Their concave arms made
+several frame styles read as debris, and the product answered that by restricting
+the offer (`frameStylesForShape` returned `minimal` only, and the admin greyed out
+the rest). Rather than keep a second, smaller menu for two shapes, the shapes are
+gone: `PLATFORM_CARD_AVATAR_SHAPES` is `circle | square`, every window carries every
+frame, and both the public projection and the admin form normalise a stored
+`star`/`pentagram` to `circle` (`normalizeAvatarShape`). Existing rows are rewritten
+by `migrations/20261117_163500`; the pg enum still lists the retired values until
+the next `yarn migrate:create`, which is harmless because no writer can produce
+them.
 
-**Zoom goes both ways: 50–160%.** A star window clips the corners away, so fitting
-the whole portrait inside the shape means scaling *down* — a floor of 100% made that
-impossible ("zoom does not work with 0.5"). 100% is the neutral middle.
+**Zoom goes both ways: 50–160%.** Fitting a whole portrait inside a small window
+means scaling *down*, so the floor is 50%; 100% is the neutral middle.
 
 **Square means square.** Its window is a 90° clip (`borderRadius: 0`), its outline
 is four sharp corners, and its pixel ring has no chamfer — it used to be a rounded
@@ -274,14 +275,13 @@ centre 50 is a cell edge and the ring is both symmetric and grid-aligned). The r
 is one, two or three cells thick by weight, chamfered at the square's corners, and
 beveled by surface normal — lit on the top-left half, shaded on the bottom-right —
 with the cells merged into a few dozen `<rect>`s. Its clip is the boundary of those
-cells, so it is the same silhouette rule as every other style. `pixel` on star and
-pentagram keeps a stroked stepped band, at the same visual weight.
+cells, so it is the same silhouette rule as every other style.
 
 There are **no accent dots**: an earlier version sampled outline vertices and drew
 small accent-coloured markers on `pixel` and `festive`; at card size they
 read as specks, not ornament.
 
-Shapes are normalized to the same visual extent, so switching circle → star does not
+Shapes are normalized to the same visual extent, so switching circle → square does not
 resize the portrait. `tests/int/avatar-frame.int.spec.ts` pins the shared window,
 the in-box guarantee, the lattice, the closed ring, the bevel and the weight ladder;
 `tests/int/avatar-frame-effects.int.spec.ts` pins the ornament and its placement.

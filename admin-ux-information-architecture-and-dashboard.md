@@ -30,24 +30,30 @@ three ways:
 
 ## Architecture
 
+> Historical note: the 2026-09 sections below describe the original
+> sidebar + mirrored dashboard. The **Matryoshka admin (2026-11-17)** section at
+> the end is the current architecture: no sidebar, four area doors, separate
+> area pages, and separate Studio / Artist Profile pages.
+
 ```
                        ┌───────────────────────────────────────────┐
                        │   src/lib/utils/admin-ia.ts (single source of   │
-                       │   truth: ADMIN_GROUPS + ADMIN_LABELS)     │
+                       │   truth: ADMIN_GROUPS + ADMIN_AREAS +      │
+                       │   ADMIN_LABELS + slug → area mapping)      │
                        └──────┬──────────────┬─────────────┬───────┘
                               │              │             │
-              collection/     │    custom     │   breadcrumbs /
-              global admin    │    nav        │   step-nav /
-              configs         │    labels     │   view headings
+              collection/     │    area      │   breadcrumbs /
+              global admin    │    pages     │   step-nav /
+              configs         │    labels    │   view headings
                               ▼              ▼             ▼
               ┌─────────────────────┐  ┌─────────────┐  ┌───────────────┐
-              │ sidebar (nav)       │  │ dashboard   │  │ AdminHeader-  │
-              │ StudioAwareNav +    │  │ cards       │  │ Actions /     │
-              │ DirectStudioLinks   │  │ (from       │  │ SetStepNav    │
-              │ + groupNavItems     │  │ admin.group)│  │               │
+              │ branded header      │  │ landing hub │  │ AdminHeader-  │
+              │ hub link, crumbs,   │  │ task areas  │  │ Actions /     │
+              │ tenant switcher,    │  │ (ADMIN_     │  │ SetStepNav    │
+              │ account, live site  │  │  AREAS)     │  │               │
               └─────────────────────┘  └─────────────┘  └───────────────┘
                               │              │
-                              └──────────────┴── mirror by construction ──┘
+                              └──────────────┴── shared labels + icons ──┘
 
         /admin (dashboard route, templateType 'default' — RootPage wraps
         the view in DefaultTemplate, so the custom view renders content only):
@@ -56,10 +62,16 @@ three ways:
         │ DashboardViewServer (views.dashboard, importMap entry)        │
         │   ├─ DashboardHero        welcome + active studio + live link │
         │   │                        + open-commissions count            │
-        │   ├─ DashboardQuickActions role-aware plain-language tiles     │
-        │   └─ CollectionGrid       getNavGroups() → same groups/order/ │
-        │                            labels as the sidebar; "Edit" cards │
-        │                            for 1:1 collections                 │
+        │   ├─ DashboardAreas       four doors (level one)              │
+        │   └─ PlatformOverview     platform-wide aggregates (admins)   │
+        └───────────────────────────────────────────────────────────────┘
+
+        /admin/areas/<key> (level two, four custom views):
+
+        ┌───────────────────────────────────────────────────────────────┐
+        │ renderAreaView(key) → DefaultTemplate                          │
+        │   ├─ admin-area-header   area icon, title, description        │
+        │   └─ admin-area-grid     role-filtered sub-cards               │
         └───────────────────────────────────────────────────────────────┘
 ```
 
@@ -68,7 +80,12 @@ three ways:
 ### 1. Shared IA module (`src/lib/utils/admin-ia.ts`)
 
 - `ADMIN_GROUPS`: My Studio, My Work, Shop & Sales, Media Library, System & Security,
-  Legal & Policies — plain text, no emoji zoo.
+  Legal & Policies — the object taxonomy still used by collection configs
+  (labels, access grouping). The **sidebar itself is gone**; these strings no
+  longer render as a nav.
+- `ADMIN_AREAS`: Pages & Content, Edit Design, Settings, Payments & Shop — the
+  task taxonomy behind the `/admin` drill-down, with stable keys, routes and a
+  slug → area map used by breadcrumbs.
 - `ADMIN_LABELS`: artist-facing names — `Artist Profile`, `Notifications`, `Payouts`,
   `Integrations`, `Work Batch(es)`, `Download(s)`, `Original File(s)`.
 - Every collection/global `admin.group`, every hardcoded nav label, breadcrumb, and
@@ -85,9 +102,9 @@ three ways:
 | System & Security | Users, Customers |
 | Legal & Policies | Terms of Service, Privacy Policy |
 
-`payload.config.ts` collection order was rearranged to match this group order, so the
-dashboard card list (config order) and the sidebar group list (insertion order in
-`groupNavItems`) are identical by construction.
+`payload.config.ts` still groups collections for labels and access, but the
+admin no longer renders those groups as a sidebar. Navigation is the drill-down
+described below; grouping is metadata, not UI.
 
 ### 3. Custom dashboard (`src/components/admin/DashboardViewServer.tsx`)
 
@@ -96,23 +113,23 @@ route runs with `templateType: 'default'`, so RootPage already provides
 `DefaultTemplate` — the view component renders content only (unlike custom-path
 views such as Payouts, which wrap their own template).
 
-- **Hero** (`DashboardHero`): "Welcome back, {name}", "View your live site" link (URL rules mirror
-  `getDynamicLivePreviewUrl`), and an open-commissions stat.
-- **Quick actions** (`DashboardQuickActions`): plain-language tiles with Phosphor
-  icons — Review Commissions, Set Prices & Slots, Payouts, Upload Artwork, Edit Your
-  Site; admins additionally get Users & Access and Customers.
-- **Card grid** (`CollectionGrid`): built from `getNavGroups(permissions,
-  visibleEntities, config, i18n)` — the same grouping function the sidebar's
-  `DefaultNavClient` uses — so groups, order, and labels always mirror. 1:1 tenant
-  collections render a single **Edit** card (direct doc href from
-  `getDirectNavLinks`), never "Create new". The Payouts and Integrations cards are
-  appended to the My Studio group to match the sidebar's static links. Custom views
-  that are not collections must stay in `MY_STUDIO_CUSTOM_CARDS`, or the e2e
-  invariant "dashboard card titles mirror sidebar link labels" fails.
+- **Hero** (`DashboardHero`): "Welcome back, {name}", the role-aware studio
+  label (`Studio:` / `Active studio:`), an optional live-site link, and an
+  open-commissions stat.
+- **Area doors** (`DashboardAreas` + `lib/areas.ts`): four cards, each linking
+  to `/admin/areas/<key>`. The pure builder applies `adminOnly` and Payload's
+  `visibleEntities`, resolves 1:1 document links from `getDirectNavLinks` and
+  drops empty areas. The hub never lists entity links; those are on level two.
+- **Area pages** (`src/components/admin/areas/`): four custom views sharing
+  `renderAreaView(key, props)`. Each resolves the same builder server-side and
+  renders `admin-area-grid` sub-cards, so an artist never receives an
+  admin-only card.
+- **Stats**: `StudioStatsRow` (orders, paid commissions, queue) for everyone;
+  `PlatformOverview` (studios, revenue, fees) for platform admins only.
 - **Icons**: `@phosphor-icons/react` uses React context with no `'use client'`
-  directive — it cannot render inside RSC. Icons are isolated in a client leaf
-  (`QuickActionIcon`, `ExternalLinkIcon`) and passed by name; the server components
-  stay server-only.
+  directive — it cannot render inside RSC. Area headers use the `AreaIcon`
+  client leaf and link rows reuse `NavItemIcon`, so the server components stay
+  server-only.
 
 ### 4. Supporting changes
 
@@ -408,6 +425,139 @@ through the collection's access control.
   label — the read side must use the exact same constant.
 - **Counts are non-fatal**: `getDashboardData` swallows count failures so the
   dashboard never breaks over a stat.
+
+## Matryoshka admin (2026-11-17)
+
+The admin is a three-level drill-down, and the sidebar is gone.
+
+```
+/admin                          four doors only
+  └─ /admin/areas/<key>         that area's sub-cards
+       └─ /admin/collections/…  the collection or custom view
+          /admin/<custom-view>
+```
+
+- **Level one** — `/admin` renders the hero, exactly four area doors, then
+  the studio stat row and (for platform admins) the platform overview. A door
+  carries the area name, one sentence, the first three entity names as a
+  preview and a shortcut count. It links to the area page, never to an entity.
+- **Level two** — `/admin/areas/content|design|settings|shop`, registered as
+  four custom views in `payload.config.ts`. `renderAreaView(key, props)`
+  resolves the area with the same pure builder and lays the sub-cards out in
+  `admin-area-grid`.
+- **Level three** — the existing collection list/document routes and custom
+  views. No new route was invented for entities.
+
+Source of truth: `src/features/admin-dashboard/lib/areas.ts` plus the area
+metadata in `src/lib/utils/admin-ia.ts` (`ADMIN_AREA_META`,
+`ADMIN_AREA_BY_SLUG`, `resolveAdminAreaKey`, `adminAreaHref`). The builder takes
+`isAdmin`, the server-resolved direct links and Payload's `visibleEntities`:
+
+- `adminOnly` entries disappear for artist sessions: Users, Customers, Invites,
+  Terms of Service, Privacy Policy, Studio Domains, Push Subscriptions, Queue
+  and Commission Chats. Customers and both legal globals were already denied by
+  access control and are now `admin.hidden` for artists too.
+- Collection/global entries follow `visibleEntities`, so a hidden entity never
+  leaks into a card. Custom views (Payouts, Integrations, Reviews, the two
+  Studio pages) are explicit routes.
+- Theme / Commission Settings / Notifications use the server-resolved direct
+  document href; without one they fall back to the collection list route.
+- An area with nothing left after filtering is dropped.
+
+Area mapping:
+
+- **Pages & Content** — opens on the studio's page list (see below). Media and
+  Original Files are admin-only: their collections are `admin.hidden` for
+  artist sessions, so the library routes 404 there and no tree lists them.
+  Artists keep uploading and picking images through the fields that need them
+  (relationship and upload drawers default to `overrideEntityVisibility: true`,
+  and uploads go through `/api/media`), and the breadcrumb for those slugs falls
+  back to the Media Library group.
+- **Edit Design** — Theme, Artist Profile
+- **Settings** — Studio, Commission Settings, Notifications, Integrations,
+  Announcements; plus legal pages, Studio Domains, Push Subscriptions, Users,
+  Customers and Invites for platform admins
+- **Payments & Shop** — Payouts, Commissions, Products, Product Types, Orders,
+  Tips, Reviews; plus Queue and Commission Chats for platform admins
+
+**Pages & Content is not a card list.** That area page renders the studio's
+pages directly: one tenant-scoped `getPages` read (`overrideAccess: false`), the
+same `sortPages` order as the Pages list view (Home first, system pages, header
+order, title), rows linking to each page document, `Core`/`Hidden` badges, a
+`New page` action and a `Manage all` link to the collection. An empty studio
+sees `No pages yet. Create your first page to get started.` The single `pages`
+entry in the builder is what keeps the area role-filtered (if a session cannot
+see Pages, the area disappears).
+
+**No sidebar.** `admin.components.Nav` is `NoSidebarNav` (returns null), and
+`beforeNavLinks` / `afterNavLinks` are removed. `_admin-theme.scss` collapses
+the template's nav column to 100% and hides the togglers, so every view owns
+the full width without a dead 275px rail. The branded header carries the only
+persistent navigation: the logo links to `/admin`, a **Back** button walks one
+level up (see below), the breadcrumb's first crumb is the area page
+(`Settings / Commission Settings`), the tenant switcher moved into the header in
+compact form, and the account and live-site buttons are unchanged; because the
+sidebar used to own the only logout control, the header carries one too. On
+phones the Back button stays visible (it was previously hidden because the
+burger opened a slide-over that no longer exists).
+
+**Back, not "Admin Hub".** The pill used to be a hard link to `/admin`, which
+skipped the area page whenever an artist was two levels down. It is now a real
+back control (`src/lib/admin-navigation/back-target.ts`):
+
+- every admin route this tab visits is recorded in a capped `sessionStorage`
+  stack (consecutive duplicates collapse, so several mounted header instances
+  and reloads cannot corrupt it);
+- Back reads the entry below the current route, so it returns to the screen you
+  came from even across areas (commissions → product → payouts → Back →
+  product). Arriving at that entry is recognised as a back-step and the
+  abandoned page is dropped, so a second press walks further up instead of
+  bouncing back;
+- with an empty stack (fresh tab, bookmark, cross-origin entry) it falls back to
+  the structural parent: entity → the area that owns it, area → `/admin`;
+- on `/admin` itself there is nowhere up to go, so the button is not rendered;
+- it stays an **anchor**, not a button with `router.push`: `AdminLeaveGuard`
+  intercepts anchor clicks, so Back still asks before discarding an unsaved
+  form. Its href is resolved in an effect (storage is client-only) while the
+  server and first paint carry the structural parent, so hydration matches.
+
+The logo still goes straight home, which is what "take me to the hub from
+anywhere" needs. Tests: `tests/int/admin-back-target.int.spec.ts` (parent
+mapping, stack walk, cross-area history, no-ping-pong trimming, corrupt
+storage) plus the live drill-down tests in `tests/e2e/admin-ux.e2e.spec.ts`.
+
+**Studio and Artist Profile are separate pages.** The combined view's client
+tab bar was removed:
+
+- `/admin/studio-profile` — studio identity (name, address, social links).
+- `/admin/artist-profile` — artist identity (avatar, bio, status, discovery
+  card).
+
+`StudioArtistAdminView` takes a `view` prop; the two custom-view wrappers pass
+`'studio'` / `'artist'`, while the hidden collection edit routes infer the
+section from `collectionSlug`. Neither page renders a switch to the other: with
+the sidebar gone, the way between them is the area page (`Settings` → Studio,
+`Edit Design` → Artist Profile) and the breadcrumb. Old bookmarks
+(`/admin/studio-profile?tab=artist`) redirect to the new page.
+
+Styling: `--ap-area-{content,design,settings,shop}` and their tints in
+`_theme-tokens.scss`; `.admin-dashboard-area*` for the four doors and
+`.admin-area-*` for level two in `_admin-theme.scss`. The four hues are
+wayfinding only; the interaction accent remains the platform plum. Doors stack
+to one column at 900px.
+
+**Retired:** `CollectionGrid`, the four oversized quick-action tiles, the
+sidebar nav (`StudioAwareNav` / `DirectStudioLinks` are no longer registered),
+the sidebar tenant block, and the "dashboard groups mirror sidebar groups"
+invariant. Tests: `tests/int/admin-dashboard-areas.int.spec.ts` (taxonomy,
+builder, four doors, config wiring, CSS contract), `tests/int/studio-artist-pages.int.spec.ts`
+(two routes, no tab state), and the rewritten `tests/e2e/admin-ux.e2e.spec.ts`
+(hub → area → entity, no visible sidebar, separate Studio/Artist pages).
+
+**Known dead code:** `CollectionGrid.tsx`, `QuickActionIcon.tsx`,
+`StudioAwareNav.tsx`, `DirectStudioLinks.tsx`, `PagesNavSubList.tsx`,
+`ReviewsNavLink.tsx` and `AdminMobileNavToggle.tsx` remain in the tree but are
+unreferenced; they can be deleted in a cleanup pass.
 
 ## Next Steps
 
