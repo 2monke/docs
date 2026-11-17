@@ -96,8 +96,7 @@ route runs with `templateType: 'default'`, so RootPage already provides
 `DefaultTemplate` — the view component renders content only (unlike custom-path
 views such as Payouts, which wrap their own template).
 
-- **Hero** (`DashboardHero`): "Welcome back, {name}", active studio (resolved from the
-  `payload-tenant-context` cookie), "View your live site" link (URL rules mirror
+- **Hero** (`DashboardHero`): "Welcome back, {name}", "View your live site" link (URL rules mirror
   `getDynamicLivePreviewUrl`), and an open-commissions stat.
 - **Quick actions** (`DashboardQuickActions`): plain-language tiles with Phosphor
   icons — Review Commissions, Set Prices & Slots, Payouts, Upload Artwork, Edit Your
