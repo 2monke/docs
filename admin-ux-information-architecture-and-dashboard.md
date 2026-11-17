@@ -554,10 +554,12 @@ builder, four doors, config wiring, CSS contract), `tests/int/studio-artist-page
 (two routes, no tab state), and the rewritten `tests/e2e/admin-ux.e2e.spec.ts`
 (hub → area → entity, no visible sidebar, separate Studio/Artist pages).
 
-**Known dead code:** `CollectionGrid.tsx`, `QuickActionIcon.tsx`,
-`StudioAwareNav.tsx`, `DirectStudioLinks.tsx`, `PagesNavSubList.tsx`,
-`ReviewsNavLink.tsx` and `AdminMobileNavToggle.tsx` remain in the tree but are
-unreferenced; they can be deleted in a cleanup pass.
+**Retired in the cleanup pass:** the components the sidebar removal orphaned
+were deleted rather than left as dead files — `CollectionGrid`, `QuickActionIcon`,
+`StudioAwareNav`, `DirectStudioLinks`, `PagesNavSubList`, `ReviewsNavLink`,
+`IconNavLinks`, `ResponsiveNavPortal`, `AdminMobileNavToggle`, plus the mobile-nav
+spec that only covered the last two. Payload's `Nav` is a null component now, so
+nothing renders `.nav` and no nav-related component has a caller.
 
 ## Next Steps
 
