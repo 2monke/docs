@@ -47,6 +47,21 @@ The hero's two buttons are artist-controlled — the block hard-coded `/apply` a
 
 The main button stays *smart* only while untouched: with no custom text and the commission-form destination it still becomes **View Live Queue** while a studio is closed (`ApplySlotButton`). Any custom text or destination means the artist's choice wins. Existing blocks need no edit — `resolveHeroButton` falls back to the old defaults (`/apply`, `View Prices`), and the migration backfills those defaults onto stored rows.
 
+## Hero Background Artwork Crop (`src/components/admin/HeroArtworkField.tsx`)
+
+The hero's **Background artwork** slot is the one image an artist must frame *before* it is stored. It sits full-bleed behind the headline, and the block only offers `object-fit: cover` — so an artwork uploaded whole is cropped by the browser at an arbitrary centre, with no way to choose which part survives.
+
+Payload's stock upload picker has no crop step, and its crop drawer is not a dependable substitute: the output size comes from the drawer's **Width/Height (px)** inputs rather than the drawn rectangle, so a narrowed box can save byte-identical bytes with no error (`collections/hooks/rejectIneffectiveCrop.ts` refuses exactly that for stored files, and `applyCropRectToUploadEdits` rewrites the request — both only on `operation === 'update'`).
+
+So the slot uses its own `UploadFieldClientComponent` instead, configured through `styledImageField({ mediaFieldComponent })`:
+
+- **New upload — crop happens client-side, first.** The chosen file opens `ImageCropModal` (the avatar's `react-easy-crop` editor: drag to place, slider to zoom) with a shape row — Wide 16:9 (default), Classic 3:2, Banner 2:1, Square, Portrait 4:5. The reason there is no single ratio: the frame the artwork covers changes with the viewport, and `object-fit: cover` trims the remainder around the media's focal point. `renderCroppedFile` writes the rectangle at native resolution, capped at `CROP_MAX_SIDE` (3200 px) and never upscaled; the file uploaded to `/api/media` is already the artist's frame, so no server crop step runs at all.
+- **Vector (SVG) uploads as-is.** There are no pixels to crop; `isAdjustableImage` is the gate.
+- **Stored artwork — `MediaAdjustDrawer`.** The file is on the CDN, so the *server* rewrites it in place with sharp (crop rectangle + focal point), same document, same key, fresh `updatedAt` so the re-versioned `<Image>` in the storefront follows. This is the same drawer the theme brand images use.
+- The live readout shows the output pixels and flags a crop below 1400 px on its longest edge as small for a large screen — advice, not a block: an artist focusing on a detail is making a choice.
+
+`resolveCropOutputPixels` is the single calculation behind both the readout and the canvas, so what the editor promises and what the file contains cannot drift.
+
 ## Hero Size & Alignment (`src/components/blocks/hero-layout.ts`)
 
 Every hero part — background artwork, headline, intro, badge row and each badge, selling-point row and each point, button row and each button — has an artist-set **width** (20–100% of its row), a **height** where it has a box (the artwork, 20–100% of the section), an optional **offset** (`x`/`y`, how far it has been moved), and **alignment** (left / centre / right / full). All are edited in Live Preview, on the element itself:
