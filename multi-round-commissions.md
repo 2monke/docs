@@ -84,19 +84,27 @@ finished:
    another's editor). Up to five example photos can be attached on this step,
    held as `File`s until the category exists — **but only when the chosen style
    renders them** (see below).
-
-**Category photos follow the layout that shows them.** On the prices page only
-`showcase` (`ShowcaseLayout`) receives `sections[].images`; `cards` renders each
-*item's* artwork from `pricingTiers`, and `panel`/`compact`/`list` are text only.
-So the photo picker appears for `showcase` and nowhere else, and choosing a
-different style drops any photos already picked — an upload that never appears is
-worse than no upload. `layoutShowsCategoryImages()` in
-`commission-settings/types.ts` is the single answer, and the Appearance panel
-reads it too: the add-image button is hidden for other styles, while photos that
-predate a style switch stay listed and removable with a note saying the current
-style does not display them.
 3. **In the form** — customers can pick from it, or it is reference only on the
    prices page.
+
+**Category photos follow the layout that shows them.** Only `showcase`
+(`ShowcaseLayout`) receives `sections[].images`, so the photo picker appears
+there and nowhere else; choosing a style that cannot show them drops any photos
+already picked, because an upload that never appears is worse than no upload.
+`layoutShowsCategoryImages()` and `layoutShowsItemImages()` in
+`commission-settings/types.ts` are the single answers, and both editors read
+them:
+
+- **Big cards** takes no *category* photos, but it is not photo-less — it paints
+  each item's own `exampleImages`, uploaded on the item row in Appearance. The
+  wizard says exactly that, and the Appearance panel points at the item buttons
+  rather than leaving a silent gap.
+- **Color panel, Compact grid, Simple list** render no artwork at all, on the
+  prices page or the form. The copy says so and does not send the artist looking
+  for per-item photos that would not display.
+- **List with gallery** is the only style where the category-level picker is
+  shown. Photos that predate a style switch stay listed and removable in
+  Appearance, with a note saying the current style does not display them.
 
 Nothing is written until **Create category**: the draft is converted by
 `draftToCategoryFields` (name trimmed, `style` → the stored `layout`), the parent
