@@ -1,13 +1,14 @@
 ---
-status: shipped
+status: shipped (phases 1–5)
 collections: [commissions, pages, product-types, products, studios]
 features: [commissions, onboarding, shop, studios]
 ---
 
 # Studio Onboarding Starter Patterns (SPEC)
 
-> **Status**: SHIPPED for phases 1–3 (pattern field, onboarding step, pattern-aware
-> seeding). Phase 4 (tour branching) and phase 5 (settings toggle) remain.
+> **Status**: SHIPPED — patterns, onboarding step, pattern-aware seeding, the shop
+> visibility toggle (`/admin/shop-settings`) and the shop topic tour. The setup tour
+> stays commission-only by design (§5.5).
 > **Related**: `docs/guided-studio-setup-tour.md` (the tour a pattern must branch),
 > `docs/monetization-listing-gates-and-subscriptions.md` (Stripe gate — unchanged by this),
 > `docs/digital-shop-product-types-and-library.md` (product-type semantics),
@@ -52,7 +53,8 @@ first product exists — the page and the product types are one toggle away.
   shop page exists in nav for every studio, and `ProductTypes.isEnabled` governs
   individual types.
 - **Onboarding is 5 steps**: Identity → Aesthetic → Account → Generating → Launch
-  (`src/features/onboarding/components/OnboardingView.tsx`).
+  (`src/features/onboarding/components/OnboardingView.tsx`). Now 6, with Studio type
+  inserted as step 2.
 - **The setup tour is a fixed 7-step commission sequence** (hero → pricing tiers →
   prices page → queue checklist → legal → Stripe → publish). Steps 2–4 assume
   commissions exist; there is no shop step.
@@ -65,12 +67,10 @@ first product exists — the page and the product types are one toggle away.
 
 **A pattern seeds content; it never gates capability.**
 
-- Choosing "Digital shop" does not disable commissions. It hides the commission
-  pages from the nav and omits commission copy, so the studio reads coherently on
-  day one.
-- The artist can switch later (add a shop, start taking commissions). Switching
-  **adds** an entry to the nav and reveals the system page that was already
-  created; it never deletes content or regenerates pages.
+- Choosing `commissions` does not disable the shop. It hides the shop page from the
+  nav and skips shop-only sections, so the studio reads coherently on day one.
+- The artist can open the shop later. That **adds** an entry to the nav and reveals
+  the page that was already created; it never deletes content or regenerates pages.
 - Consequence: store the choice as `starterPattern` on the studio — an
   initialisation hint consumed once — not as a permission.
 
@@ -81,22 +81,25 @@ hidden page is exactly "not part of this business yet, but here when you need it
 ## 4. Where the choice lives
 
 **New step 2** in onboarding: `Identity → Pattern → Aesthetic → Account → …`.
-Three large cards, one tap, no free text. Inserting a step is friction, so it earns
+Two large cards, one tap, no free text. Inserting a step is friction, so it earns
 its place by being the only question that changes what the studio *is*.
 
-❓ Alternative to decide: fold the three cards into the bottom of Step 1 (Identity)
-as a segmented control, keeping five steps. Cheaper for the artist, but the question
-then competes with the name field for attention.
-
-**Storage**: `Studios.starterPattern` — `select` of `'commissions' | 'shop' | 'both'`,
+**Storage**: `Studios.starterPattern` — `select` of `'commissions' | 'both'`,
 default `'both'` so existing studios and any API-created studio behave exactly as
-they do today. Hidden from the studio form (`admin.hidden`) once set: it describes
-how the studio was born, not a setting an artist should re-edit; a later switch is
-a separate "add a shop / start taking commissions" action.
+they do today. Hidden from the studio form (`admin.hidden`): it describes how the
+studio was born, not a setting an artist should re-edit; opening the shop later is
+a Settings toggle.
 
 **Plumbing**: `ArtistOnboardingInput.starterPattern` →
-`artist-onboarding.action.ts` passes it to `createDefaultPagesForTenant` and to a new
-`buildCommissionSettingsInput({ pattern })` / `buildProductTypesInput({ pattern })`.
+`artist-onboarding.action.ts` passes it to `createDefaultPagesForTenant` and to
+`buildCommissionSettingsInput({ pattern })`.
+
+**Product types are not seeded by onboarding.** The Studios `afterChange` hook
+(`initializeStudioProductTypes`) already writes `DEFAULT_PRODUCT_TYPES` for every
+new studio, so the shop has its categories whether or not its page is visible. An
+earlier draft of this feature carried a second list in the onboarding module; it
+disagreed with the platform's (it invented a `psd` slug and marked the system
+types non-system), which would have given a new studio duplicated categories.
 
 ## 5. What each pattern seeds
 
@@ -115,9 +118,10 @@ a separate "add a shop / start taking commissions" action.
 | Tour | 7 steps, shop wording removed | current 7 steps |
 | Hero copy | "{studio} — commissions open" | "{studio} — commissions and digital art" |
 
-### 5.1 Commission settings (Commissions, Both)
+### 5.1 Commission settings (both patterns)
 
-Seed **structure, never prices**:
+Every studio takes commissions, so both patterns get the same structure. Seed
+**structure, never prices**:
 
 ```
 commissionTypes: [{
@@ -142,9 +146,10 @@ so this seeds nothing new — it just writes down what the storefront already as
 live storefront the moment the studio publishes. Instead the tour's first task
 becomes "set your prices", and `/prices` shows the existing empty state.
 
-### 5.2 Product types (Shop, Both)
+### 5.2 Product types (both pattern only)
 
-Three types, `isEnabled: true`, slugs matching what the home blocks link to:
+Three types, `isEnabled: true`, slugs matching what the home blocks and the shop's
+filters expect:
 
 | Name | Slug | Why |
 |---|---|---|
@@ -161,47 +166,64 @@ working categories; the empty state already explains what to add.
 
 ### 5.3 Pages and nav
 
-All six system pages are still created for every pattern. What changes is
-`showInHeader` + `headerOrder`:
+All six system pages are created for both patterns. What changes is `showInHeader`:
 
-- Commissions: `shop` → `showInHeader: false`
-- Shop: `prices` + `queue` → `showInHeader: false`
-- Both: all visible (today's behaviour)
+- **Commissions**: `shop` → `showInHeader: false`. Prices and queue stay visible.
+- **Both**: all visible.
 
-Home `bentoGrid` cards per pattern:
+Opening the shop later is therefore a nav edit (`showInHeader: true` on the shop
+page) plus the starter product types — never a page that has to be created
+retroactively.
 
-- Commissions: **Commission Prices** → `/prices`, **Live Queue** → `/queue`.
-  Drop the Digital Assets and My Courses cards.
-- Shop: no bento. `latestProducts` (self-hides until the first product exists), then
-  `mediaGallery` if the artist uploaded art.
-- Both: Live Queue + Digital Shop cards, then `latestProducts`.
+Home blocks, both patterns:
 
-Every seeded block must be one that **renders nothing when empty** (see §2). A
-`mediaGallery` or `sectionedContent` block seeded with no content would show a hole.
+- **Commissions**: hero → `openRounds`. The section self-hides until a round opens.
+- **Both**: hero → `openRounds` → `latestProducts`. The product section self-hides
+  until the first product is published.
+
+No `bentoGrid`, `mediaGallery`, `shopCatalog` or `sectionedContent` is seeded in
+either: those draw a frame even with no content, so a starter page would ship a
+visible hole. The block picker offers all of them once the artist has something to
+put in them.
 
 ### 5.4 Hero copy
 
-The aesthetic step already supplies `suggestedHeroTitle` / `suggestedHeroBio`
-(`AESTHETIC_PRESETS`). The pattern supplies the *business* sentence, and the
-existing copy stays as the fallback:
+The pattern supplies the *business* sentence. The theme does **not**:
+`suggestedHeroTitle` / `suggestedHeroBio` were removed from `ThemeGenerationSchema`,
+the local fallback and `AESTHETIC_PRESETS`, because a colour prompt was deciding the
+artist's first words (and re-rolling the aesthetic silently rewrote their page).
 
-- Commissions: "Custom character art, open for commissions."
-- Shop: "Digital art, ready to download."
-- Both: the shipped "Your art / commissions" copy.
+- **Commissions**: "{studio} — commissions open" / "Custom artwork, made to order…"
+- **Both**: "{studio} — commissions and digital art" / "Custom work made to order, and
+  digital products you can download today."
 
-### 5.5 Setup tour
+Both are neutral placeholders the tour's first step asks the artist to replace.
 
-The 7-step tour is commission-shaped. Per pattern:
+### 5.5 The setup tour stays commission-only
 
-- **Commissions**: current tour, with any shop mention removed (it has none today).
-- **Shop**: replace steps 2–4 (pricing tiers, prices page, queue) with
-  "Add your first product", "Organise product types", "Delivery & files".
-- **Both**: current tour plus one shop step, before the Stripe step.
+The 7-step **setup** tour is commission-shaped, and that is now correct for both
+patterns — every studio can take commissions. The shop half of a mixed studio is
+**not** given a step there, deliberately:
 
-This is the largest hidden cost of the feature: the tour is a declarative step
-config, so branching is feasible, but it doubles the tour's content surface.
+- The setup tour's contract is "everything you need before you can take paid
+  commissions". A shop task inside it would follow every commissions-only artist
+  through work they do not have.
+- A mixed studio already learned its shop exists in onboarding's pattern step, and
+  the shop page is in its header.
 
-## 6. Shared base (all three patterns)
+Instead the shop guidance lives in the **shop topic tour**, which is reached from
+the "?" on the screens it describes:
+
+| Step | Route | Intent | What it says |
+|---|---|---|---|
+| `shop-visibility` | `/admin/shop-settings` | know | The switch only decides whether clients see the shop; nothing is deleted. |
+| `shop-products` | `/admin/collections/products` | do | Add the first product: type, price in cents, instant delivery. |
+
+This is smaller than making the setup tour pattern-aware (which would mean
+threading facts through the runner, the widget and every progress count, with a
+real risk of "step 5 of 8" disagreeing with the steps actually played).
+
+## 6. Shared base (both patterns)
 
 Unchanged from today: artist + user + studio (`profileStatus: 'draft'`), theme from
 the aesthetic step, commission settings record, six system pages, legal pages,
@@ -231,7 +253,7 @@ Stripe gate and the publish rule.
 ## 9. Rollout order
 
 1. `starterPattern` field on `Studios` + onboarding input + step-2 UI (data only;
-   all three patterns still generate today's content).
+   both patterns still generate today's content).
 2. Pattern-aware `createDefaultPagesForTenant`: nav visibility + home blocks +
    hero copy.
 3. Pattern-aware commission settings and product-type seeding.
@@ -244,26 +266,49 @@ session feel tailored.
 
 ## 10. Decisions (locked 2026-11-20)
 
-1. **Step count**: a new step 2 (`Identity → Studio type → Aesthetic → Account`).
-2. **Shop-only and the queue**: hidden from the nav, page created and intact.
-3. **Product-type starter set**: three types (`character_base`, `psd`, `course`).
+1. **Two patterns only**: `commissions` and `both`. No shop-only studio — a
+   storefront with no way to request work is a dead end for a directory visitor.
+2. **Step count**: a new step 2 (`Identity → Studio type → Aesthetic → Account`).
+3. **Product types**: not seeded by onboarding at all. The `initializeStudioProductTypes`
+   hook already writes `DEFAULT_PRODUCT_TYPES` for every studio (superseding the
+   earlier "three starter types" decision).
 4. **Pattern storage**: `Studios.starterPattern`, default `both`.
-5. **Switch-pattern UX**: a settings toggle (phase 5, not built yet).
+5. **Switch-pattern UX**: a settings toggle at `/admin/shop-settings`.
 
 ## 11. What shipped
 
 - `src/features/onboarding/lib/starter-patterns.ts` — the single table: labels, hero
   copy, nav visibility, home blocks, starter commission types, starter product types.
-- `Studios.starterPattern` (`commissions | shop | both`, default `both`, hidden field)
-  plus migration `20261120_003000_add_studio_starter_pattern`.
-- `StepPattern` as onboarding step 2; the progress bar, footer, draft restore and
-  step validation were renumbered around it (`TOTAL_STEPS = 4`).
+- `Studios.starterPattern` (`commissions | both`, default `both`, hidden field)
+  plus migration `20261120_003000_add_studio_starter_pattern`. The migration drops
+  and recreates the enum, so a development database that applied the earlier
+  three-value draft recovers; `resolveStarterPattern` maps a stale `'shop'` to
+  `both` rather than failing.
+- `StepPattern` as onboarding step 2 (two cards, `both` preselected); the progress
+  bar, footer, draft restore and step validation were renumbered around it
+  (`TOTAL_STEPS = 4`).
 - `createDefaultPagesForTenant({ pattern })` — nav flags from the pattern, home
-  blocks from `starterHomeBlocks`, and **no FAQ** for a shop-only studio (its
-  answers assert refund terms, which the artist must write).
-- `buildCommissionSettingsInput({ pattern })` seeds one `illustration` type for
-  commission-taking studios and none for a shop.
-- Starter product types created during registration (errors logged, never fatal).
+  blocks from `starterHomeBlocks`, and the commission FAQ guarded by
+  `patternTakesCommissions`. With no shop-only studio that guard is always true
+  today; it stays so a future shop-only shape cannot inherit refund copy it has no
+  business asserting.
+- `buildCommissionSettingsInput({ pattern })` seeds one `illustration` type.
+- **No product-type seeding in onboarding.** The Studios `afterChange` hook
+  (`initializeStudioProductTypes`) already writes `DEFAULT_PRODUCT_TYPES` (Digital
+  Asset, Course, Character Base, Bundle) for every studio, so the shop has its
+  categories whether or not its page is visible. One definition, owned by the shop.
+- **Shop visibility settings** — `/admin/shop-settings`
+  (`ShopSettingsViewServer` + `ShopSettingsView` + `setShopEnabled`). Turning the
+  shop on sets the shop page's `showInHeader` and the studio's `starterPattern` to
+  `both`; turning it off reverses both. Products, orders and product types are
+  never touched, so closing a door does not delete a catalogue. Authorization is
+  `getRoundActor`'s: session user, assigned studio, switcher cookie honoured only
+  when it names a studio the user belongs to — the tenant never comes from the
+  client. The view is styled from admin tokens (`_admin-theme.scss`), because the
+  admin shell does not load Tailwind.
+- **Shop topic tour**: `shop-visibility` (know) on the settings page, before the
+  existing `shop-products` (do) step. The **setup** tour stays commission-only; see
+  §5.5 for why.
 
 **Home blocks use only self-hiding sections.** `openRounds` and `latestProducts`
 return `null` with no data, so they are safe before the studio has a single round or
@@ -282,9 +327,9 @@ business answer), and the theme answers only "how does it look".
 
 ## 12. Still open
 
-- **Tour branching** (phase 4): steps 2–4 assume commissions exist.
-- **Settings toggle** (phase 5): flipping `showInHeader` on the relevant system
-  pages, and adding starter product types if the shop is being turned on.
-- **Existing studios**: untouched (`both`), so their old bento still carries the
-  shop links. A backfill that rewrites historical pages is deliberately not part of
-  this change.
+- **Existing studios** keep `both` and their old bento carrying the shop links. A
+  backfill that rewrites historical pages is deliberately not part of this change.
+- **The header's own preview** of a hidden shop: a commissions-only studio's
+  `/shop` URL still resolves when typed directly. Hiding is a nav decision, not an
+  access rule; adding a 404 for a hidden system page would break the artist's own
+  preview and any link they shared before closing it.
