@@ -11,7 +11,7 @@ Studio
 ├─ Commission Settings            ← the type + price library
 │   ├─ illustration  (open)       drawing tiers, backgrounds, extras
 │   ├─ refsheet      (open)       custom tiers, extras
-│   ├─ ych           (seats)      add-on categories only
+│   ├─ ych           (seats)      no categories — seats live on the round
 │   └─ acrylic       (open)       sizes, finishes
 │
 └─ Commission Rounds              ← many may be live at once
@@ -37,13 +37,23 @@ library, where everything is editable afterwards.
 | --- | --- | --- |
 | Illustration | open | Drawing Tier (cards), Backgrounds (panel), Extras (guide only) |
 | Custom & Ref Sheet | open | Ref Sheet Tier (showcase), Extras (guide only) |
-| YCH | **seats** | Add-ons (compact) — the seat carries the base price |
+| YCH | **seats** | none — the seat carries the price |
 | Emotes & Badges | open | Emote Packs (compact) |
 | VTuber & Live2D | open | Model Art (showcase) |
 | Acrylic & Traditional | open | Size (cards), Finish (panel) |
 
 `slotMode` is the part a name cannot convey: YCH is the seat-map template, so a
 type created from it sells round seats rather than `maxSlots` capacity.
+
+**A seat-map type has no categories.** Its inventory is the seats on its round’s
+sheet, each with its own price and package, so a price category would be a
+second place to say what a YCH costs — and the type would have to appear on the
+prices page with no seat to price. The editor therefore offers no “Add
+Category” for one, and no control for the slot style itself: the template the
+type was created from already decided it, and flipping a live type’s mode would
+silently change what its rounds sell. Existing seat types that still carry
+categories from before keep them — they are live on the form as optional
+add-ons — but nothing invites more.
 
 ### Two ways to create a type
 
@@ -123,9 +133,10 @@ open ──claim(conditional write)──▶ held ──finalize(token)──▶
 6. Reserve the customer's per-round allowance.
 7. Open-slot rounds: reserve the round counter (`maxSlots`).
 8. Finalize the seat (seat rounds) before slow work.
-9. Ingest media, compute the price breakdown (seat price + selected add-ons for
-   seats; tier analysis otherwise), create the commission with `batch: round.id`
-   and either `pending_ai` (open) or `needs_artist_review` (seat).
+9. Ingest media, compute the price breakdown (the seat's price, plus any
+   categories a legacy seat type still defines; tier analysis otherwise), create
+   the commission with `batch: round.id` and either `pending_ai` (open) or
+   `needs_artist_review` (seat).
 10. Attach the seat back-link, send the confirmation email.
 11. Any failure releases the seat, the customer allowance and the round counter.
 
