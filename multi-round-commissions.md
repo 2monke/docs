@@ -81,8 +81,20 @@ finished:
 2. **Style** — the prices-page layout, as tiles with a schematic preview, a
    description and a suggested use (`CategoryStylePreview` draws the schematic
    from admin tokens rather than a screenshot, so no studio's colours leak into
-   another's editor). The same step takes up to five example photos, held as
-   `File`s until the category exists.
+   another's editor). Up to five example photos can be attached on this step,
+   held as `File`s until the category exists — **but only when the chosen style
+   renders them** (see below).
+
+**Category photos follow the layout that shows them.** On the prices page only
+`showcase` (`ShowcaseLayout`) receives `sections[].images`; `cards` renders each
+*item's* artwork from `pricingTiers`, and `panel`/`compact`/`list` are text only.
+So the photo picker appears for `showcase` and nowhere else, and choosing a
+different style drops any photos already picked — an upload that never appears is
+worse than no upload. `layoutShowsCategoryImages()` in
+`commission-settings/types.ts` is the single answer, and the Appearance panel
+reads it too: the add-image button is hidden for other styles, while photos that
+predate a style switch stay listed and removable with a note saying the current
+style does not display them.
 3. **In the form** — customers can pick from it, or it is reference only on the
    prices page.
 
