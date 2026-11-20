@@ -112,6 +112,20 @@ Appearance. A quick-added starter category (“+ Drawing Tiers” on an empty ty
 skips the wizard and starts on **Big cards**, so it is presentable before anyone
 opens Appearance.
 
+### Pricing rules are a step, not a permanent block
+
+The per-type estimator rules (`commissionTypes[].aiPromptGuidelines`) used to be
+an always-open textarea between the type name and its categories — the tallest
+field block in the tab for something most types never fill in. It now sits behind
+the same `cs-appearance-summary` disclosure bar the category Appearance panel
+uses: **Pricing rules**, a badge reading *Set* or *Optional*, and the bar's own
+Edit/Add hint. Opening it reveals the plain-language prompt (“What adds work for
+you — extra characters, armour detail, backgrounds…”) and the textarea.
+
+The tour target (`data-guide-target="cs-ai-guidelines"`) stayed on the wrapper, so
+the `ai-guidelines` step's pointer lands on the bar — which is the thing to
+click, rather than a textarea the artist may not need.
+
 A round's type keys are validated against the **saved** settings document, which
 is why the drawer's template path persists immediately — a type that only lived
 in the settings form would fail with “Commission types not found in your saved
