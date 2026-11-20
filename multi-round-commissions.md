@@ -71,6 +71,35 @@ A type created in the round drawer is also pushed into the settings editor's
 local library, so a later “Save” of unrelated settings cannot write a type list
 that drops it.
 
+### Adding a category: three questions, one at a time
+
+`CommissionTypesTab` → **Add Category** opens `CategoryWizard`
+(`commission-settings/CategoryWizard.tsx`), which creates nothing until it is
+finished:
+
+1. **Name** — what the customer reads on the form. Enter advances.
+2. **Style** — the prices-page layout, as tiles with a schematic preview, a
+   description and a suggested use (`CategoryStylePreview` draws the schematic
+   from admin tokens rather than a screenshot, so no studio's colours leak into
+   another's editor). The same step takes up to five example photos, held as
+   `File`s until the category exists.
+3. **In the form** — customers can pick from it, or it is reference only on the
+   prices page.
+
+Nothing is written until **Create category**: the draft is converted by
+`draftToCategoryFields` (name trimmed, `style` → the stored `layout`), the parent
+appends the category and then uploads the photos through the same media path the
+Appearance strip uses. A failed upload keeps the category and says so — the three
+answers are worth more than the photos. Escape or the ✕ cancels with the type
+unchanged, and the step order, validation and image rules are pure functions in
+`commission-settings/category-wizard.ts` so they are pinned directly.
+
+“Not shown on the prices page” is deliberately absent from the style step: it is
+a valid end state but a trap as a starting point, so it stays available later in
+Appearance. A quick-added starter category (“+ Drawing Tiers” on an empty type)
+skips the wizard and starts on **Big cards**, so it is presentable before anyone
+opens Appearance.
+
 A round's type keys are validated against the **saved** settings document, which
 is why the drawer's template path persists immediately — a type that only lived
 in the settings form would fail with “Commission types not found in your saved
