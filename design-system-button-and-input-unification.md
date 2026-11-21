@@ -115,7 +115,7 @@ When `prefix` (or `startAdornment`) / `suffix` (or `endAdornment`) are provided,
 | **`TierItemRow`** | `src/features/onboarding/components/subcomponents/TierItemRow.tsx` | Standardized item row delete button and prefix-safe currency input |
 | **`StepOfferings`** | `src/features/onboarding/components/steps/StepOfferings.tsx` | Used `Button` for category addition and tier configuration |
 | **`StepAesthetic`** | `src/features/onboarding/components/steps/StepAesthetic.tsx` | Standardized aesthetic prompt selection pills and custom input |
-| **`StepLaunch` & `StepMascot`** | `src/features/onboarding/components/steps/` | Standardized mascot selectors and final launch triggers |
+| **`StepLaunch`** | `src/features/onboarding/components/steps/StepLaunch.tsx` | Standardized final launch triggers |
 | **`OnboardingFooter`** | `src/features/onboarding/components/OnboardingFooter.tsx` | Back/Next actions standardized with `outline` and `hero` |
 | **`OnboardingProgressBar`** | `src/features/onboarding/components/OnboardingProgressBar.tsx` | Close modal button standardized with `ghost` and `icon` |
 | **`LoginForm` & `RegisterForm`** | `src/features/auth/components/` | Form submit actions standardized with `variant="hero" size="lg"` |
