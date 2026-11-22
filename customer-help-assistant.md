@@ -67,6 +67,15 @@ Inside the Worker:
   └─ 6. Unanswered questions logged as structured JSON
 ```
 
+## Current availability
+
+The Discord bot is the live channel. The in-app widget is **not mounted on any
+route**: it overlapped the project discussion dock on commission pages, and the
+web surface is not ready to launch. The component, its `/api/help/ask` proxy and
+its tests stay in place, so the web channel can be re-enabled by mounting
+`HelpWidget` / `AuthHelpWidget` again. Until then only the Discord bot calls the
+service.
+
 ## Why answering is not in this application
 
 It used to be. The corpus was a `docs` submodule read with `fs` at request time
@@ -83,7 +92,7 @@ article is one deploy of that service, and this application is untouched.
 |---|---|
 | `src/app/api/help/ask/route.ts` | Proxy. The HMAC secret must not reach a browser, and the audience comes from the Payload session, which the service cannot see. Also the only component that knows *who* is asking, so the per-user rate limit lives here. |
 | `src/app/api/discord/interactions/route.ts` | Proxy. Keeps Ed25519 signature verification in the app; Discord calls this URL directly. |
-| `src/features/help/components/HelpWidget.tsx` | React UI inside the dashboard and storefront layouts. |
+| `src/features/help/components/HelpWidget.tsx` | React UI for the in-app widget. Currently not mounted on web (see Current availability); kept for when that channel returns. |
 | `src/lib/help/client.ts` | The signed client. Classifies failures: an outage degrades to a "contact support" answer, while a rejected question stays visible instead of hiding a bug. |
 | `src/lib/security/service-token.ts` | Mints the HMAC envelope, and holds the shared test vector that keeps three deployments in step. |
 | `scripts/help-draft.ts` | Reads *this* repository's admin routes and screen labels, which is why a draft beats a cold model call. |
