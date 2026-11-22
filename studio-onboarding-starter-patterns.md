@@ -177,9 +177,12 @@ retroactively.
 
 Home blocks, both patterns:
 
-- **Commissions**: hero → `openRounds`. The section self-hides until a round opens.
-- **Both**: hero → `openRounds` → `latestProducts`. The product section self-hides
-  until the first product is published.
+- **Commissions**: hero → `openRounds` → `priceList`. What the studio does, then
+  what is bookable, then the prices page's own block. `openRounds` self-hides
+  until a round opens; `priceList` self-hides until a tier carries items.
+- **Both**: hero → `latestProducts` → `openRounds` → `priceList`. Products lead
+  because they are the thing a visitor can act on today; the rounds follow. Each
+  section self-hides until it has content.
 
 No `bentoGrid`, `mediaGallery`, `shopCatalog` or `sectionedContent` is seeded in
 either: those draw a frame even with no content, so a starter page would ship a
@@ -222,6 +225,50 @@ the "?" on the screens it describes:
 This is smaller than making the setup tour pattern-aware (which would mean
 threading facts through the runner, the widget and every progress count, with a
 real risk of "step 5 of 8" disagreeing with the steps actually played).
+
+### 5.6 Starting layout from the theme (geometry and visibility only)
+
+The theme generator now also answers **how the hero is arranged**, and that choice
+becomes the blocks' starting `layout` at creation time. It is the one place the
+theme touches a page, so the boundary is written down here:
+
+| The theme decides | It never decides |
+|---|---|
+| Where the headline sits (left / centred) | Which words the headline says |
+| Whether the intro paragraph exists | What the intro paragraph says |
+| The headline's type scale (poster) | Which blocks the page has, or their order |
+| How much of the hero the artwork takes | Whether the studio has a shop |
+| One call to action or two | Anything about an existing studio |
+
+Three fields were added to `ThemeGenerationSchema` (all optional, all enums, no
+numbers) plus the local fallback and the curated presets:
+
+- `heroComposition`: `editorial` (left copy — the default), `centered`,
+  `poster` (oversized headline, intro removed, one action), `minimal` (headline
+  only — intro and second action removed).
+- `heroArtworkEmphasis`: `subtle` / `balanced` / `dominant` (full-bleed, the
+  untouched default).
+- `heroButtonEmphasis`: `single` / `pair`.
+
+`src/features/onboarding/lib/starter-block-layout.ts` expands those names into
+`HeroLayout` entries, passes them through `sanitizeHeroLayout`, and returns the
+layout per block type. `starterHomeBlocks(pattern, name, layout)` attaches it. The
+default composition expands to **nothing**, so a studio created without a
+composition is byte-identical to one created before this feature.
+
+**Visibility is part of layout.** `HeroLayoutEntry.hidden` removes an element
+from the block entirely (not `opacity: 0` — it is absent from the DOM, so it takes
+no space and screen readers never reach it). Only `true` is stored. The headline
+and the background artwork cannot be hidden: the first carries the studio's name,
+the second already has `mascotArtwork.showMascot`. A hidden element is restored
+from the live preview's **Hidden** list, because a removed element has no box to
+select — the per-element toolbar's hide button and that list are the two halves of
+the same control.
+
+**Applied once, never re-applied.** `/api/ai/generate-theme` and the admin theme
+field keep writing styling only; re-generating an aesthetic on an existing studio
+does not touch its pages. Pinned by `tests/int/starter-block-layout.int.spec.ts`
+and the existing “theme generation produces styling, not content” cases.
 
 ## 6. Shared base (both patterns)
 
@@ -324,6 +371,15 @@ fallback, from the four poster fixtures and from `AESTHETIC_PRESETS`: a colour
 prompt used to decide the artist's first words, and re-rolling the aesthetic
 silently rewrote their landing page. Hero copy now comes from the pattern (a
 business answer), and the theme answers only "how does it look".
+
+**The theme does now write a starting layout** (§5.6): `heroComposition`,
+`heroArtworkEmphasis` and `heroButtonEmphasis` are expanded by
+`starter-block-layout.ts` into the blocks' hidden `layout` field — alignment,
+text scale, artwork box, and whether the intro / second button exist at all. That
+required one new layout capability, `HeroLayoutEntry.hidden`, plus a **Hidden**
+list in the live preview so a removed element can be brought back. The default
+composition expands to nothing, so any caller that omits it (the seed route, an
+older client) produces exactly the pages it produced before.
 
 ## 12. Still open
 
