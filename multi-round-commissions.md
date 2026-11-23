@@ -150,9 +150,31 @@ settings”.
 | `commissions` | `commissionType` (`text`) | Was an enum (`illustration`/`custom`); studios define their own keys now. |
 | `commissions` | `seat` (relationship) | The claimed seat. |
 | `commissions` | `seatSnapshot` (group) | `label` and `price` copied at claim time. |
-| `commission-seats` | — | One row per seat (one character): round, type key, label, price, note, marker %, status, claim token, held-until, commission. |
+| `commission-seats` | — | One row per slot (one character): round, type key, label, price, note, marker %, status, claim token, held-until, commission. |
 
-### Seat lifecycle
+> **Copy says "slot"; the data contract says `seat`.** The artist- and
+> customer-facing word is *slot* everywhere (Slot map, Manage slots, Slot 1). The
+> collection slug, field names (`seat`, `seatSnapshot`, `seatMapImage`,
+> `slotMode: 'seats'`) and the action names keep the original vocabulary on
+> purpose: renaming them would rewrite stored data, URLs and every caller to buy
+> nothing a customer can see. When reading code, translate `seat` → slot.
+
+### Creating slots
+
+- **Labels are automatic.** The label field is gone from the create form; a new
+  slot is numbered from the highest number already on the round (`1`, `2`, …) and
+  stored as that bare number. Numeric labels render as `Slot 3`; a slot renamed to
+  a phrase (`Front left`) passes through unchanged.
+- **A price is required and must be greater than 0** on create. An existing
+  zero-priced slot (comp, prize) stays editable — the update path accepts `0` so
+  a legacy row is never locked out of an unrelated edit.
+- **A marker is required on create.** A slot with no place on the sheet cannot be
+  picked, so the panel refuses to add one until the sheet is uploaded and clicked;
+  `createSeat` re-checks the same rule server-side. Positions are validated to
+  0–100 on create *and* on the move path, so a hand-crafted call cannot park a
+  marker off the sheet.
+
+### Slot lifecycle
 
 ```text
 open ──claim(conditional write)──▶ held ──finalize(token)──▶ taken
@@ -161,7 +183,7 @@ open ──claim(conditional write)──▶ held ──finalize(token)──▶
 ```
 
 - **Claim** is one SQL `UPDATE ... WHERE status = 'open' OR (status = 'held' AND
-  held_until < now)`. Two customers racing for one seat produce exactly one
+  held_until < now)`. Two customers racing for one slot produce exactly one
   winner; the loser gets `409` and the form reloads the map.
 - The hold expires after 10 minutes, so a crash between claim and finalize
   self-heals.
@@ -270,13 +292,14 @@ round the customer chose — never to “whichever round is accepting now”.
 - **Commission Settings → Rounds**:
   - Plan/Edit drawer: type checkboxes (at least one), limits, dates. Types are
     read-only while the round is live.
-  - Round cards: type chips, `Slots: n/max` or `Seats: taken/total`, per-round
+  - Round cards: type chips, `Slots: n/max` or `Slots: taken/total`, per-round
     Close / Reopen / Archive.
-  - **Seats** button (seat rounds): upload/replace the seat map image, save the
-    instructions, then click the sheet to place each seat. A seat is **one
-    character** — label, price and an optional note. Placement is click-only:
+  - **Manage slots** button (slot rounds): upload/replace the slot map image, save
+    the instructions, then click the sheet to place each slot. A slot is **one
+    character** — number, price and an optional note. Placement is click-only:
     markers are stored as percentages of the sheet, so the map looks right at
-    any width. Close/open/delete from the seat list.
+    any width. Move a marker by pressing *Place* on the slot and clicking the
+    sheet again. Close/open/delete from the slot list.
 - Several rounds may be live; opening one no longer archives another.
 
 ## Files changed
@@ -357,7 +380,5 @@ round the customer chose — never to “whichever round is accepting now”.
   non-`custom` open-slot type. Seat rounds skip AI entirely.
 - The customer dashboard type filter dropdown lists only legacy types (URL
   filtering works).
-- Seat map markers are numeric percentages; there is no click-to-place editor on
-  the image yet.
 - Mixed slot styles inside one round are refused by design; split them into two
   rounds.
